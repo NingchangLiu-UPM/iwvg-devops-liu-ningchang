@@ -14,7 +14,7 @@
 
 ### Code Status
 
-<!-- Badge 1: GitHub Actions CI — will be added during Sprint 1, Issue #1 -->
+[![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
 <!-- Badge 2: SonarCloud Quality Gate — will be added during Sprint 1, Issue #2 -->
 <!-- Badge 3: Render deployment — will be added during Sprint 1, Issue #3 -->
 
