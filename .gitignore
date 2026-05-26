@@ -1,0 +1,15 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+target
+
+### VS Code / Cursor ###
+.vscode
+
+### Logs and OS artifacts ###
+*.log
+.DS_Store
+Thumbs.db
