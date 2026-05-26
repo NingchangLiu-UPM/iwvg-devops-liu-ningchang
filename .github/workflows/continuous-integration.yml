@@ -1,12 +1,48 @@
+# ============================================================================
+# Continuous Integration Workflow
+# ============================================================================
+# Triggered on:
+#   - push to develop or release-* branches
+#   - pull_request targeting develop or release-* branches
+#
+# Pipeline stages:
+#   1. Checkout (full history for CodeQL/Sonar blame data)
+#   2. Set up Java 21 (Temurin) + Maven cache
+#   3. Initialize CodeQL (security-extended queries)
+#   4. Run unit + integration + functional tests (via mvn verify)
+#   5. Upload JaCoCo XML coverage as artifact (consumed by SonarCloud in #2)
+#   6. CodeQL static analysis
+#   7. Slack failure notification (skipped if secret not configured)
+#
+# Out of scope:
+#   - SonarCloud analysis  -> Issue #2
+#   - Docker image build   -> Issue #3 / CD workflow
+#   - Render deployment    -> Issue #3 / CD workflow
+# ============================================================================
+
 name: CI
+
 on:
   push:
-    branches: [develop,release-*]
+    branches: [develop, release-*]
+  pull_request:
+    branches: [develop, release-*]
+
+# Cancel any in-progress run on the same ref (saves CI minutes,
+# avoids race conditions on downstream services like SonarCloud).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   devops:
-    name: Tests & CodeQL & SonarCloud
+    name: Tests & CodeQL
     runs-on: ubuntu-22.04
+
+    # Minimal, explicit permissions:
+    #   contents: read         -- checkout code
+    #   actions: read          -- required for some action metadata APIs
+    #   security-events: write -- CodeQL uploads SARIF to GitHub Security tab
     permissions:
       contents: read
       actions: read
@@ -16,7 +52,7 @@ jobs:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # full history needed by CodeQL & SonarCloud blame
 
       - name: ☕ Set up Java
         uses: actions/setup-java@v4
@@ -25,7 +61,7 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: 🏷️ Extract artifact from pom
+      - name: 🏷️ Extract module name from pom
         run: echo "ARTIFACT=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
 
       - name: 🛡️ Initialize CodeQL
@@ -34,29 +70,30 @@ jobs:
           languages: java
           queries: security-extended
 
-      - name: ✅ Run Unit & Integration Test & Functional Test
-        run: mvn -B verify
+      - name: ✅ Run Unit, Integration & Functional Tests
+        # -fae (fail-at-end): run all tests before failing, so we see EVERY failure in one run
+        run: mvn -B -fae verify
 
-      - name: 🔔 Notify Slack on failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
+      - name: 📦 Upload JaCoCo coverage report
+        if: always()   # upload even on test failure, so coverage is available for diagnostics
+        uses: actions/upload-artifact@v4
         with:
-          status: ${{ job.status }}
-          fields: repo,author,commit,author,workflow,
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          name: jacoco-coverage
+          path: target/site/jacoco/jacoco.xml
+          if-no-files-found: error   # fail loudly if coverage file is missing
+          retention-days: 14
 
       - name: 🔍 CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:java"
 
-      - name: 📊 Sonar Analysis
-        run: >
-          mvn -B sonar:sonar 
-          -Dsonar.projectKey=miw-upm-github_${{ env.ARTIFACT }}
-          -Dsonar.organization=miw-upm-github 
-          -Dsonar.host.url=https://sonarcloud.io 
-          -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+      - name: 🔔 Notify Slack on failure
+        # Guard: only run if (a) something failed AND (b) Slack webhook is configured
+        if: failure() && env.SLACK_WEBHOOK_URL != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,author,commit,workflow
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
