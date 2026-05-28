@@ -87,7 +87,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -B sonar:sonar -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+        run: mvn -B sonar:sonar
 
       - name: 🔍 CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -97,7 +97,7 @@ jobs:
       - name: 🔔 Notify Slack on failure
         # Guard: only run if (a) something failed AND (b) Slack webhook is configured
         if: failure() && env.SLACK_WEBHOOK_URL != ''
-        uses: 8398a7/action-slack@v3
+        uses: 8398a7/action-slack@28ba43ae48961b90635b50953d810772a9508c92 # v3.18.0
         with:
           status: ${{ job.status }}
           fields: repo,author,commit,workflow
