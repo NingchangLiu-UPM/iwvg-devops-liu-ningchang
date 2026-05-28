@@ -15,7 +15,7 @@
 ### Code Status
 
 [![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
-<!-- Badge 2: SonarCloud Quality Gate — will be added during Sprint 1, Issue #2 -->
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NingchangLiu-UPM_iwvg-devops-liu-ningchang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang)
 <!-- Badge 3: Render deployment — will be added during Sprint 1, Issue #3 -->
 
 ### Required Technologies
