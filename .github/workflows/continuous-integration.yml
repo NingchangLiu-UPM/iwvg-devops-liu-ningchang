@@ -83,6 +83,12 @@ jobs:
           if-no-files-found: error   # fail loudly if coverage file is missing
           retention-days: 14
 
+      - name: 📊 SonarCloud Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B sonar:sonar -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+
       - name: 🔍 CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
