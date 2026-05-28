@@ -3,8 +3,10 @@ services:
     build: .
     image: devops:latest
     restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
     ports:
-      - "8080:8080"
+      - "10000:10000"
     networks:
       - devopsNet
 
@@ -12,4 +14,5 @@ networks:
   devopsNet:
     external: true
 
+# Build and start the application container
 #> docker compose up --build -d
