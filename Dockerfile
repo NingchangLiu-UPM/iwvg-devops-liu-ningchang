@@ -1,37 +1,39 @@
-# Entorno de PRODUCCIÓN
+# PRODUCTION environment
 
-# ==ETAPA 1: Construcción del JAR con Maven==
-   # Imagen combinada: maven + jdk21 de eclipse
+# ==STAGE 1: Build the JAR with Maven==
+   # Combined image: maven + jdk21 from Eclipse Temurin
 FROM maven:3.9.9-eclipse-temurin-21 AS build
-   # Directorio de trabajo dentro del contenedor
+   # Working directory inside the container
 WORKDIR /app
-   # Solo se copia el pom.xml al directorio de trabajo
+   # Copy only pom.xml first (Docker layer cache optimization)
 COPY pom.xml ./
-   # Baja las dependencias sin conexión y en modo Batch (sin asistencia)
+   # Download dependencies offline in batch mode (no interactive prompts)
 RUN mvn dependency:go-offline -B
-   # Solo copia los fuentes java, NO los test
+   # Copy only the Java sources (tests are NOT included)
 COPY src ./src
-   # Limpia y empaqueta (se crea el *.jar)
+   # Clean and package (produces the *.jar without running tests)
 RUN mvn clean package -DskipTests
 
-# ==ETAPA 2: Configuración de la app Java ==
-   # Contenedor solo con JRE, para hacerlo mas pequeño
+# ==STAGE 2: Java application runtime==
+   # JRE-only image to keep the final container small
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-   # Copia el archivo *jar generado en el contenedor de construcción
+   # Copy the *.jar produced in the build stage
 COPY --from=build /app/target/*.jar app.jar
-   # Este contenedor escucha el puerto indicado
-EXPOSE 8080
-   # Define un comando para cuando se inicialice el contenedor en el host: java -jar app.jar
+   # Activate the 'prod' Spring profile by default (Render and docker-compose rely on this)
+ENV SPRING_PROFILES_ACTIVE=prod
+   # Production HTTP port (matches application-prod.yml -> server.port: 10000)
+EXPOSE 10000
+   # Entry point when the container starts on the host: java -jar app.jar
 CMD ["java", "-jar", "app.jar"]
 
 
-# ------------------------------------- COMANDOS ----------------------------------------------------------
-# Construir la imagen, ATENCION!!! existe un punto al final que se debe incluir
+# ------------------------------------- COMMANDS ----------------------------------------------------------
+# Build the image (WARNING: the trailing dot is required)
 #> docker build -t devops:latest .
 
-# Crea y arrancar el contenedor a partir de la imagen
-#> docker run -d --name devops1  -p 8080:8080 devops
+# Create and start the container from the image
+#> docker run -d --name devops1 -p 10000:10000 devops:latest
 
-# Arranca el contenedor
+# Start an existing container
 #> docker start devops1
