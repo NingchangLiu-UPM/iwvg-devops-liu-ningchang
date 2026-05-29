@@ -1,6 +1,5 @@
 package es.upm.miw.devops;
 
-import java.util.Collections;
 import java.util.List;
 
 public class User {
