@@ -64,4 +64,38 @@ class SearchesTest {
         assertThat(new Fraction(1, 3).decimal()).isLessThan(highestDecimal);
         assertThat(new Fraction(-7, 3).decimal()).isLessThan(highestDecimal);
     }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameForCarlosIsFirstUserInOrder() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Carlos");
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(7.0 / 2.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameForSusana() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Susana");
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(1.0 / 3.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameForMariaWithNegativeFraction() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Maria");
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(-0.5);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameForLucia() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Lucia");
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(1.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameReturnsNullForUnknownName() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Unknown");
+        assertThat(result).isNull();
+    }
 }
