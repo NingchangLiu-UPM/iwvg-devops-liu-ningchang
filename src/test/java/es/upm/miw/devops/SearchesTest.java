@@ -2,6 +2,8 @@ package es.upm.miw.devops;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SearchesTest {
@@ -101,5 +103,38 @@ class SearchesTest {
     void testFindFirstDecimalFractionByUserNameReturnsNullForUnknownName() {
         Double result = new Searches().findFirstDecimalFractionByUserName("Unknown");
         assertThat(result).isNull();
+    }
+
+    @Test
+    void testFindUserFamilyNameBySomeImproperFractionReturnsCorrectFamilyNamesInOrder() {
+        var result = new Searches().findUserFamilyNameBySomeImproperFraction().toList();
+        assertThat(result)
+                .hasSize(4)
+                .containsExactly("Garcia", "Gomez", "Lopez", "Perez");
+    }
+
+    @Test
+    void testFindUserFamilyNameBySomeImproperFractionExcludesUsersWithOnlyProperFractions() {
+        var result = new Searches().findUserFamilyNameBySomeImproperFraction().toList();
+        assertThat(result).hasSize(4);
+    }
+
+    @Test
+    void testFindUserFamilyNameBySomeImproperFractionFamilyNameBelongsToImproperUser() {
+        var result = new Searches().findUserFamilyNameBySomeImproperFraction().toList();
+        assertThat(result)
+                .contains("Perez")
+                .isSubsetOf(List.of("Garcia", "Gomez", "Lopez", "Perez"));
+    }
+
+    @Test
+    void testFindUserFamilyNameBySomeImproperFractionAllBelongToUsersWithImproperFraction() {
+        var result = new Searches().findUserFamilyNameBySomeImproperFraction().toList();
+        for (String familyName : result) {
+            boolean hasImproper = new UsersDatabase().findAll()
+                    .filter(u -> u.getFamilyName().equals(familyName))
+                    .anyMatch(u -> u.getFractions().stream().anyMatch(Fraction::isImproper));
+            assertThat(hasImproper).isTrue();
+        }
     }
 }
