@@ -1,6 +1,8 @@
 package es.upm.miw.devops;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
@@ -103,6 +105,43 @@ class SearchesTest {
     void testFindFirstDecimalFractionByUserNameReturnsNullForUnknownName() {
         Double result = new Searches().findFirstDecimalFractionByUserName("Unknown");
         assertThat(result).isNull();
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameWithLeadingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("  Carlos");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(7.0 / 2.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameWithTrailingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Maria  ");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(-0.5);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameWithSurroundingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("  Susana  ");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(1.0 / 3.0);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "cArLoS, 3.5",
+            "LUCIA, 1.0",
+            "lucia, 1.0"
+    })
+    void testFindFirstDecimalFractionByUserNameCaseInsensitive(String nameInput, double expectedDecimal) {
+        Double result = new Searches().findFirstDecimalFractionByUserName(nameInput);
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(expectedDecimal);
     }
 
     @Test
