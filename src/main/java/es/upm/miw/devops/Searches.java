@@ -51,4 +51,13 @@ public class Searches {
                 .max(Comparator.comparingDouble(Fraction::decimal))
                 .orElse(null);
     }
+
+    public Double findFirstDecimalFractionByUserName(String name) {
+        return usersDatabase.findAll()
+                .filter(u -> u.getName().equals(name))
+                .findFirst()
+                .flatMap(user -> user.getFractions().stream().findFirst())
+                .map(Fraction::decimal)
+                .orElse(null);
+    }
 }
