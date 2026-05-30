@@ -37,8 +37,9 @@ class UsersDatabaseTest {
         List<Fraction> allFractions = new UsersDatabase().findAll()
                 .flatMap(user -> user.getFractions().stream())
                 .toList();
-        assertThat(allFractions).anyMatch(f -> Math.abs(f.getNumerator()) < Math.abs(f.getDenominator()));
-        assertThat(allFractions).anyMatch(f -> Math.abs(f.getNumerator()) >= Math.abs(f.getDenominator()));
-        assertThat(allFractions).anyMatch(f -> f.decimal() < 0);
+        assertThat(allFractions)
+                .anyMatch(f -> Math.abs(f.getNumerator()) < Math.abs(f.getDenominator()))
+                .anyMatch(f -> Math.abs(f.getNumerator()) >= Math.abs(f.getDenominator()))
+                .anyMatch(f -> f.decimal() < 0);
     }
 }
