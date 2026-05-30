@@ -1,5 +1,8 @@
 package es.upm.miw.devops;
 
+import java.util.Collection;
+import java.util.Comparator;
+
 import java.util.Optional;
 
 public class Searches {
@@ -39,5 +42,13 @@ public class Searches {
             resultDenominator = -resultDenominator;
         }
         return new Fraction(resultNumerator, resultDenominator);
+    }
+
+    public Fraction findHighestFraction() {
+        return usersDatabase.findAll()
+                .map(User::getFractions)
+                .flatMap(Collection::stream)
+                .max(Comparator.comparingDouble(Fraction::decimal))
+                .orElse(null);
     }
 }
