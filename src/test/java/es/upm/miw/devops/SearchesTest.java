@@ -43,4 +43,25 @@ class SearchesTest {
         Fraction result = new Searches().findFractionSubtractionByUserName("Unknown");
         assertThat(result).isNull();
     }
+
+    @Test
+    void testFindHighestFraction() {
+        Fraction result = new Searches().findHighestFraction();
+        assertThat(result).isNotNull();
+        assertThat(result.getNumerator()).isEqualTo(7);
+        assertThat(result.getDenominator()).isEqualTo(2);
+        assertThat(result.decimal()).isEqualTo(7.0 / 2.0);
+    }
+
+    @Test
+    void testFindHighestFractionIsHigherThanAllOthers() {
+        Fraction highest = new Searches().findHighestFraction();
+        double highestDecimal = highest.decimal();
+        assertThat(new Fraction(9, 5).decimal()).isLessThan(highestDecimal);
+        assertThat(new Fraction(5, 3).decimal()).isLessThan(highestDecimal);
+        assertThat(new Fraction(8, 3).decimal()).isLessThan(highestDecimal);
+        assertThat(new Fraction(4, 4).decimal()).isLessThan(highestDecimal);
+        assertThat(new Fraction(1, 3).decimal()).isLessThan(highestDecimal);
+        assertThat(new Fraction(-7, 3).decimal()).isLessThan(highestDecimal);
+    }
 }
