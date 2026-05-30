@@ -27,7 +27,7 @@ public class Searches {
     }
 
     private java.util.function.BinaryOperator<Fraction> subtract() {
-        return (a, b) -> subtract(a, b);
+        return this::subtract;
     }
 
     private Fraction subtract(Fraction minuend, Fraction subtrahend) {
