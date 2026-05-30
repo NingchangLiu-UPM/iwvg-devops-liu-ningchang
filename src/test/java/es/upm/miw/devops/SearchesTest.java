@@ -106,6 +106,54 @@ class SearchesTest {
     }
 
     @Test
+    void testFindFirstDecimalFractionByUserNameWithLeadingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("  Carlos");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(7.0 / 2.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameWithTrailingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("Maria  ");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(-0.5);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameWithSurroundingWhitespace() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("  Susana  ");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(1.0 / 3.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameCaseInsensitive() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("cArLoS");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(7.0 / 2.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameUpperCase() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("LUCIA");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(1.0);
+    }
+
+    @Test
+    void testFindFirstDecimalFractionByUserNameLowerCase() {
+        Double result = new Searches().findFirstDecimalFractionByUserName("lucia");
+        assertThat(result)
+                .isNotNull()
+                .isEqualTo(1.0);
+    }
+
+    @Test
     void testFindUserFamilyNameBySomeImproperFractionReturnsCorrectFamilyNamesInOrder() {
         var result = new Searches().findUserFamilyNameBySomeImproperFraction().toList();
         assertThat(result)
