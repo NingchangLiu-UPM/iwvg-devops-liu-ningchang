@@ -14,7 +14,7 @@
 
     <groupId>es.upm.miw</groupId>
     <artifactId>iwvg-devops-liu-ningchang</artifactId>
-    <version>5.0.0-Release</version>
+    <version>5.1.0-Release</version>
     <packaging>jar</packaging>
     <name>${project.groupId}.${project.artifactId}</name>
     <url>http://github.com/miw-upm/${project.artifactId}</url>
@@ -154,6 +154,7 @@
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
                     <argLine>
+                        @{argLine}
                         -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                         -Xshare:off
                     </argLine>
