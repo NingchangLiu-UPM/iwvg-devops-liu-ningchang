@@ -2,8 +2,8 @@ package es.upm.miw.devops;
 
 import java.util.Collection;
 import java.util.Comparator;
-
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public class Searches {
 
@@ -59,5 +59,11 @@ public class Searches {
                 .flatMap(user -> user.getFractions().stream().findFirst())
                 .map(Fraction::decimal)
                 .orElse(null);
+    }
+
+    public Stream<String> findUserFamilyNameBySomeImproperFraction() {
+        return usersDatabase.findAll()
+                .filter(user -> user.getFractions().stream().anyMatch(Fraction::isImproper))
+                .map(User::getFamilyName);
     }
 }
