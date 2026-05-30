@@ -1,6 +1,8 @@
 package es.upm.miw.devops;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
@@ -129,28 +131,17 @@ class SearchesTest {
                 .isEqualTo(1.0 / 3.0);
     }
 
-    @Test
-    void testFindFirstDecimalFractionByUserNameCaseInsensitive() {
-        Double result = new Searches().findFirstDecimalFractionByUserName("cArLoS");
+    @ParameterizedTest
+    @CsvSource({
+            "cArLoS, 3.5",
+            "LUCIA, 1.0",
+            "lucia, 1.0"
+    })
+    void testFindFirstDecimalFractionByUserNameCaseInsensitive(String nameInput, double expectedDecimal) {
+        Double result = new Searches().findFirstDecimalFractionByUserName(nameInput);
         assertThat(result)
                 .isNotNull()
-                .isEqualTo(7.0 / 2.0);
-    }
-
-    @Test
-    void testFindFirstDecimalFractionByUserNameUpperCase() {
-        Double result = new Searches().findFirstDecimalFractionByUserName("LUCIA");
-        assertThat(result)
-                .isNotNull()
-                .isEqualTo(1.0);
-    }
-
-    @Test
-    void testFindFirstDecimalFractionByUserNameLowerCase() {
-        Double result = new Searches().findFirstDecimalFractionByUserName("lucia");
-        assertThat(result)
-                .isNotNull()
-                .isEqualTo(1.0);
+                .isEqualTo(expectedDecimal);
     }
 
     @Test
