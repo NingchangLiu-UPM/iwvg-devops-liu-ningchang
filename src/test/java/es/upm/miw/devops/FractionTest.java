@@ -109,7 +109,9 @@ class FractionTest {
 
     @Test
     void testDivideByZeroNumeratorThrowsException() {
-        assertThatThrownBy(() -> new Fraction(1, 2).divide(new Fraction(0, 3)))
+        Fraction dividend = new Fraction(1, 2);
+        Fraction divisor = new Fraction(0, 3);
+        assertThatThrownBy(() -> dividend.divide(divisor))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Divisor numerator must not be zero");
     }
