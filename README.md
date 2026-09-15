@@ -12,6 +12,7 @@
 ### Estado del código
 [![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NingchangLiu-UPM_iwvg-devops-liu-ningchang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang)
+[![AWS EC2](https://img.shields.io/badge/AWS_EC2-deployed-FF9900?logo=amazonaws&logoColor=white)](http://51.48.72.167:8080/swagger-ui.html)
 
 
 ### Tecnologías necesarias

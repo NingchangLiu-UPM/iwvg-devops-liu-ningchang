@@ -1,62 +1,144 @@
 name: CD
+
 on:
   push:
-    branches: ['master']
+    branches:
+      - staging
 
 env:
-  REPOSITORY: ${{ github.repository }} # <user>/<repo>
-  GHCR_URL: ghcr.io # GitHub Container Registry
+  AWS_REGION: eu-south-2
+  ECR_REGISTRY: 727660953632.dkr.ecr.eu-south-2.amazonaws.com
+  ECR_REPOSITORY: iwvg-devops-liu-ningchang
+  IMAGE_TAG: ${{ github.sha }}
+  CONTAINER_NAME: iwvg-devops
+  APP_PORT: 8080
 
 jobs:
-  cd:
-    name: Build & Push GitHub Package & Deploy on Render Docker Image
+  deploy:
+    name: Build & Push to Amazon ECR & Deploy on AWS EC2
     runs-on: ubuntu-22.04
+
     steps:
-      - name: ⬇️ Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: ☕ Set up Java
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
           cache: maven
 
-      - name: 🏷️ Extract artifact from pom
-        run: |
-          echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_ENV
-          echo "ARTIFACT=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)" >> $GITHUB_ENV
+      - name: Verify Maven project (Unit, Integration, Functional tests)
+        run: mvn -B verify
 
-      # 1º Crear Token de Acceso Personal:
-      #    GitHub → Settings → Developer settings → Personal access tokens → Generate new token (classic)
-      #    Permisos mínimos: write:packages, read:packages, delete:packages, repo
-      #
-      # 2º Crear secret en GitHub:
-      #    Repo → Settings → Secrets and variables → Actions → New repository secret
-      #    Name: GHCR_PERSONAL_ACCESS_TOKEN, Value: <tu token>
-      - name: 📦 Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry: ${{ env.GHCR_URL }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PERSONAL_ACCESS_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: 🐳 Build & Push Docker image
-        uses: docker/build-push-action@v4
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image to Amazon ECR
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ${{ env.GHCR_URL }}/${{ env.REPOSITORY }}:${{ env.VERSION }}
-            ${{ env.GHCR_URL }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
-      # 🌐 Render Deployment
-      # 1. En Render: Web Service → Settings → Deploy Hook → copiar el token
-      # 2. En GitHub: Settings → Secrets and variables → Actions → crear secret: RENDER_DEPLOY_HOOK_TOKEN
-      - name: 🚀 Deploy on Render
+      - name: Prepare SSH key
         run: |
-          curl --fail -X POST "https://api.render.com/deploy/${{ secrets.RENDER_DEPLOY_HOOK_TOKEN }}" \
-          && echo "✅ Deployment succeeded" \
-          || (echo "❌ Deployment failed" && exit 1)
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ec2
+          chmod 600 ~/.ssh/id_ec2
+          ssh-keyscan -H "${{ secrets.AWS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "SSH key prepared"
+
+      - name: Deploy to EC2 via SSH
+        env:
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+          AWS_USER: ${{ secrets.AWS_USER }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+          APP_PORT: ${{ env.APP_PORT }}
+        run: |
+          set -eu
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/id_ec2"
+
+          ssh $SSH_OPTS "${AWS_USER}@${AWS_HOST}" "set -euo pipefail
+            echo '==[1/7] ECR login via EC2 IAM role=='
+            aws ecr get-login-password --region ${AWS_REGION} \
+              | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+            echo '==[2/7] Capture previous running image (if any)=='
+            PREV_IMAGE=\$(docker inspect -f '{{.Image}}' ${CONTAINER_NAME} 2>/dev/null || echo '')
+            if [ -n \"\${PREV_IMAGE}\" ]; then
+              echo \"Previous container image: \${PREV_IMAGE}\"
+            else
+              echo 'No previous container found'
+            fi
+
+            echo '==[3/7] Pull new image=='
+            docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+            echo '==[4/7] Stop and remove existing container (if any)=='
+            docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
+
+            echo '==[5/7] Start new container=='
+            docker run -d \
+              --name ${CONTAINER_NAME} \
+              -p ${APP_PORT}:${APP_PORT} \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              --restart unless-stopped \
+              ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+            echo '==[6/7] Health check=='
+            HEALTHY=0
+            for i in \$(seq 1 20); do
+              sleep 3
+              STATUS=\$(curl -fs -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}/actuator/health || echo '000')
+              BODY=\$(curl -fs http://localhost:${APP_PORT}/actuator/health 2>/dev/null || echo '')
+              echo \"Attempt \${i}/20: HTTP=\${STATUS} body=\${BODY}\"
+              if [ \"\${STATUS}\" = \"200\" ] && echo \"\${BODY}\" | grep -q '\"status\":\"UP\"'; then
+                HEALTHY=1
+                break
+              fi
+            done
+
+            if [ \"\${HEALTHY}\" -ne 1 ]; then
+              echo '==[HEALTH FAILED] Diagnostic logs=='
+              docker logs ${CONTAINER_NAME} --tail=200 || true
+              docker rm -f ${CONTAINER_NAME} || true
+
+              if [ -n \"\${PREV_IMAGE}\" ]; then
+                echo '==[ROLLBACK] Restarting previous image=='
+                docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
+                docker run -d \
+                  --name ${CONTAINER_NAME} \
+                  -p ${APP_PORT}:${APP_PORT} \
+                  -e SPRING_PROFILES_ACTIVE=prod \
+                  --restart unless-stopped \
+                  \${PREV_IMAGE}
+              else
+                echo 'No previous image to roll back to'
+              fi
+              exit 1
+            fi
+            echo 'Deployment successful: actuator/health is UP'
+          "
+
+      - name: Clean SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_ec2
+          echo "SSH key cleaned"
