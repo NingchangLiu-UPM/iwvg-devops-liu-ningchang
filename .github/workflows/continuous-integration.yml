@@ -26,3 +26,14 @@ jobs:
 
       - name: Run Unit, Integration and Functional Tests
         run: mvn -B verify
+
+      - name: Run SonarCloud analysis
+        if: github.ref == 'refs/heads/develop'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          mvn -B sonar:sonar
+          -Dsonar.projectKey=NingchangLiu-UPM_iwvg-devops-liu-ningchang
+          -Dsonar.organization=ningchangliu-upm-1
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.token=${SONAR_TOKEN}
