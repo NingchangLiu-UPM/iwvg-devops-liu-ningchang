@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -91,6 +92,50 @@ class UserResourceFT {
                 .expectStatus().isNotFound();
 
         assertThat(this.userRepository.existsById(SeederForDev.USER_ADMIN_ID)).isTrue();
+        assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+    }
+
+    @Test
+    void testUpdateActive() {
+        User before = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow();
+        assertThat(before.getActive()).isTrue();
+
+        try {
+            this.webTestClient.put()
+                    .uri("/user/{id}/active", SeederForDev.USER_CUSTOMER_ID)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(false)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody().isEmpty();
+
+            User updated = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow();
+            assertThat(updated.getActive()).isFalse();
+            assertThat(updated.getRole()).isEqualTo(Role.CUSTOMER);
+            assertThat(updated.getMobile()).isEqualTo("+34611000204");
+        } finally {
+            this.webTestClient.put()
+                    .uri("/user/{id}/active", SeederForDev.USER_CUSTOMER_ID)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(true)
+                    .exchange()
+                    .expectStatus().isOk();
+
+            User restored = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow();
+            assertThat(restored.getActive()).isTrue();
+        }
+    }
+
+    @Test
+    void testUpdateActiveNotFound() {
+        this.webTestClient.put()
+                .uri("/user/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9998/active")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(false)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
         assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
     }
 }
