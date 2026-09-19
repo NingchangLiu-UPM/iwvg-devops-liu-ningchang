@@ -78,4 +78,37 @@ class UserServiceIT {
         assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
         assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
     }
+
+    @Test
+    void testUpdateActive() {
+        User before = this.userService.read(SeederForDev.USER_OPERATOR_ID);
+        assertThat(before.getActive()).isTrue();
+
+        try {
+            this.userService.updateActive(SeederForDev.USER_OPERATOR_ID, false);
+
+            User updated = this.userService.read(SeederForDev.USER_OPERATOR_ID);
+            assertThat(updated.getActive()).isFalse();
+            assertThat(updated.getRole()).isEqualTo(Role.OPERATOR);
+            assertThat(updated.getMobile()).isEqualTo("+34611000203");
+        } finally {
+            this.userService.updateActive(SeederForDev.USER_OPERATOR_ID, true);
+
+            User restored = this.userService.read(SeederForDev.USER_OPERATOR_ID);
+            assertThat(restored.getActive()).isTrue();
+        }
+    }
+
+    @Test
+    void testUpdateActiveNotFound() {
+        UUID nonExistentId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff9998");
+
+        assertThatThrownBy(() -> this.userService.updateActive(nonExistentId, false))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode")
+                .isEqualTo(HttpStatus.NOT_FOUND);
+
+        assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
+        assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+    }
 }

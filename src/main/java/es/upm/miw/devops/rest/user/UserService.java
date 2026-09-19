@@ -27,4 +27,10 @@ public class UserService {
     public void delete(UUID id) {
         this.userRepository.deleteById(id);
     }
+
+    @Transactional
+    public void updateActive(UUID id, Boolean active) {
+        User user = this.read(id);
+        user.setActive(active);
+    }
 }
