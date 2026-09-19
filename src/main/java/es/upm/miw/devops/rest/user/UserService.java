@@ -23,4 +23,8 @@ public class UserService {
                         HttpStatus.NOT_FOUND,
                         "User not found: " + id));
     }
+
+    public void delete(UUID id) {
+        this.userRepository.deleteById(id);
+    }
 }
