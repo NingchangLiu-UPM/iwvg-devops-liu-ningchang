@@ -2,7 +2,9 @@ package es.upm.miw.devops.functionaltests;
 
 import es.upm.miw.devops.rest.user.Province;
 import es.upm.miw.devops.rest.user.Role;
+import es.upm.miw.devops.rest.user.SeederForDev;
 import es.upm.miw.devops.rest.user.User;
+import es.upm.miw.devops.rest.user.UserDto;
 import es.upm.miw.devops.rest.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,5 +63,34 @@ class UserResourceFT {
                 .expectStatus().isOk();
 
         assertThat(this.userRepository.existsById(id)).isFalse();
+    }
+
+    @Test
+    void testRead() {
+        this.webTestClient.get()
+                .uri("/user/{id}", SeederForDev.USER_MANAGER_ID)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(UserDto.class)
+                .value(userDto -> {
+                    assertThat(userDto.getId()).isEqualTo(SeederForDev.USER_MANAGER_ID);
+                    assertThat(userDto.getMobile()).isEqualTo("+34611000202");
+                    assertThat(userDto.getFirstName()).isEqualTo("Manager");
+                    assertThat(userDto.getRole()).isEqualTo(Role.MANAGER);
+                    assertThat(userDto.getActive()).isTrue();
+                });
+
+        assertThat(this.userRepository.existsById(SeederForDev.USER_MANAGER_ID)).isTrue();
+    }
+
+    @Test
+    void testReadNotFound() {
+        this.webTestClient.get()
+                .uri("/user/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9999")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        assertThat(this.userRepository.existsById(SeederForDev.USER_ADMIN_ID)).isTrue();
+        assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
     }
 }
