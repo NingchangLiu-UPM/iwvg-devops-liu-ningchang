@@ -17,6 +17,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -137,5 +138,57 @@ class UserResourceFT {
 
         assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
         assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+    }
+
+    @Test
+    void testFindBillableTrue() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?billable=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+    }
+
+    @Test
+    void testFindBillableFalse() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?billable=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID,
+                        SeederForDev.USER_CUSTOMER_ID);
+    }
+
+    @Test
+    void testFindActiveFalseAndBillableTrue() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?active=false&billable=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
     }
 }
