@@ -80,86 +80,106 @@ jobs:
           set -eu
           SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/id_ec2"
 
-          ssh $SSH_OPTS "${AWS_USER}@${AWS_HOST}" "set -euo pipefail
-            echo '==[1/9] ECR login via EC2 IAM role=='
-            aws ecr get-login-password --region ${AWS_REGION} \
-              | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+          {
+            printf 'AWS_REGION=%q\n'   "$AWS_REGION"
+            printf 'ECR_REGISTRY=%q\n' "$ECR_REGISTRY"
+            printf 'ECR_REPOSITORY=%q\n' "$ECR_REPOSITORY"
+            printf 'CONTAINER_NAME=%q\n' "$CONTAINER_NAME"
+            printf 'APP_PORT=%q\n'     "$APP_PORT"
+            printf 'POSTGRES_USER=%q\n' "$POSTGRES_USER"
+            printf 'POSTGRES_PASSWORD=%q\n' "$POSTGRES_PASSWORD"
+            printf 'DB_CONTAINER=%q\n' "$DB_CONTAINER"
+            printf 'DB_NETWORK=%q\n'   "$DB_NETWORK"
+            printf 'SPRING_DATASOURCE_URL=%q\n' "$SPRING_DATASOURCE_URL"
 
-            echo '==[2/9] Capture previous running image (if any)=='
-            PREV_IMAGE=\$(docker inspect -f '{{.Image}}' ${CONTAINER_NAME} 2>/dev/null || echo '')
-            if [ -n \"\${PREV_IMAGE}\" ]; then
-              echo \"Previous container image: \${PREV_IMAGE}\"
+            cat <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          echo '==[1/9] ECR login via EC2 IAM role=='
+          aws ecr get-login-password --region "${AWS_REGION}" \
+            | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+          echo '==[2/9] Capture previous running image (if any)=='
+          PREV_IMAGE=$(docker inspect -f '{{.Image}}' "${CONTAINER_NAME}" 2>/dev/null || echo '')
+          if [ -n "${PREV_IMAGE}" ]; then
+            echo "Previous container image: ${PREV_IMAGE}"
+          else
+            echo 'No previous container found'
+          fi
+
+          echo '==[3/9] Ensure Docker network exists=='
+          docker network inspect "${DB_NETWORK}" >/dev/null 2>&1 || docker network create "${DB_NETWORK}"
+
+          echo '==[4/9] Verify PostgreSQL container is running=='
+          if ! docker ps \
+              --filter "name=${DB_CONTAINER}" \
+              --filter "status=running" \
+              --format '{{.Names}}' \
+              | grep -qx "${DB_CONTAINER}"; then
+            echo "FATAL: PostgreSQL container '${DB_CONTAINER}' is not running on network '${DB_NETWORK}'" >&2
+            docker ps -a --filter "name=${DB_CONTAINER}" \
+              --format 'table {{.Names}}  {{.Status}}  {{.Ports}}' >&2 || true
+            exit 1
+          fi
+          echo "PostgreSQL container '${DB_CONTAINER}' is running"
+
+          echo '==[5/9] Pull new image=='
+          docker pull "${ECR_REGISTRY}"/"${ECR_REPOSITORY}":latest
+
+          echo '==[6/9] Stop and remove existing container (if any)=='
+          docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
+
+          echo '==[7/9] Start new container=='
+          docker run -d \
+            --name "${CONTAINER_NAME}" \
+            --network "${DB_NETWORK}" \
+            -p "${APP_PORT}":"${APP_PORT}" \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL}" \
+            -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER}" \
+            -e SPRING_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD}" \
+            --restart unless-stopped \
+            "${ECR_REGISTRY}"/"${ECR_REPOSITORY}":latest
+
+          echo '==[8/9] Health check=='
+          HEALTHY=0
+          for i in $(seq 1 20); do
+            sleep 3
+            STATUS=$(curl -fs -o /dev/null -w '%{http_code}' http://localhost:"${APP_PORT}"/actuator/health || echo '000')
+            BODY=$(curl -fs http://localhost:"${APP_PORT}"/actuator/health 2>/dev/null || echo '')
+            echo "Attempt ${i}/20: HTTP=${STATUS}"
+            if [ "${STATUS}" = "200" ] && echo "${BODY}" | grep -q '"status":"UP"'; then
+              HEALTHY=1
+              break
+            fi
+          done
+
+          if [ "${HEALTHY}" -ne 1 ]; then
+            echo '==[HEALTH FAILED] Diagnostic logs=='
+            docker logs "${CONTAINER_NAME}" --tail=200 || true
+            docker rm -f "${CONTAINER_NAME}" || true
+
+            if [ -n "${PREV_IMAGE}" ]; then
+              echo '==[ROLLBACK] Restarting previous image=='
+              docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
+              docker run -d \
+                --name "${CONTAINER_NAME}" \
+                --network "${DB_NETWORK}" \
+                -p "${APP_PORT}":"${APP_PORT}" \
+                -e SPRING_PROFILES_ACTIVE=prod \
+                -e SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL}" \
+                -e SPRING_DATASOURCE_USERNAME="${POSTGRES_USER}" \
+                -e SPRING_DATASOURCE_PASSWORD="${POSTGRES_PASSWORD}" \
+                --restart unless-stopped \
+                "${PREV_IMAGE}"
             else
-              echo 'No previous container found'
+              echo 'No previous image to roll back to'
             fi
-
-            echo '==[3/9] Ensure Docker network exists=='
-            docker network inspect ${DB_NETWORK} >/dev/null 2>&1 || docker network create ${DB_NETWORK}
-
-            echo '==[4/9] Verify PostgreSQL container is running=='
-            if ! docker ps --filter name=^/${DB_CONTAINER}$ --filter status=running --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
-              echo "FATAL: PostgreSQL container '${DB_CONTAINER}' is not running on ${DB_NETWORK}" >&2
-              docker ps -a --filter name=^/${DB_CONTAINER}$ --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2 || true
-              exit 1
-            fi
-            echo "PostgreSQL container '${DB_CONTAINER}' is running"
-
-            echo '==[5/9] Pull new image=='
-            docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-
-            echo '==[6/9] Stop and remove existing container (if any)=='
-            docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
-
-            echo '==[7/9] Start new container=='
-            docker run -d \
-              --name ${CONTAINER_NAME} \
-              --network ${DB_NETWORK} \
-              -p ${APP_PORT}:${APP_PORT} \
-              -e SPRING_PROFILES_ACTIVE=prod \
-              -e SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL} \
-              -e SPRING_DATASOURCE_USERNAME=${POSTGRES_USER} \
-              -e SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} \
-              --restart unless-stopped \
-              ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-
-            echo '==[8/9] Health check=='
-            HEALTHY=0
-            for i in \$(seq 1 20); do
-              sleep 3
-              STATUS=\$(curl -fs -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}/actuator/health || echo '000')
-              BODY=\$(curl -fs http://localhost:${APP_PORT}/actuator/health 2>/dev/null || echo '')
-              echo \"Attempt \${i}/20: HTTP=\${STATUS} body=\${BODY}\"
-              if [ \"\${STATUS}\" = \"200\" ] && echo \"\${BODY}\" | grep -q '\"status\":\"UP\"'; then
-                HEALTHY=1
-                break
-              fi
-            done
-
-            if [ \"\${HEALTHY}\" -ne 1 ]; then
-              echo '==[HEALTH FAILED] Diagnostic logs=='
-              docker logs ${CONTAINER_NAME} --tail=200 || true
-              docker rm -f ${CONTAINER_NAME} || true
-
-              if [ -n \"\${PREV_IMAGE}\" ]; then
-                echo '==[ROLLBACK] Restarting previous image=='
-                docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
-                docker run -d \
-                  --name ${CONTAINER_NAME} \
-                  --network ${DB_NETWORK} \
-                  -p ${APP_PORT}:${APP_PORT} \
-                  -e SPRING_PROFILES_ACTIVE=prod \
-                  -e SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL} \
-                  -e SPRING_DATASOURCE_USERNAME=${POSTGRES_USER} \
-                  -e SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} \
-                  --restart unless-stopped \
-                  \${PREV_IMAGE}
-              else
-                echo 'No previous image to roll back to'
-              fi
-              exit 1
-            fi
-            echo 'Deployment successful: actuator/health is UP'
-          "
+            exit 1
+          fi
+          echo 'Deployment successful: actuator/health is UP'
+          REMOTE_SCRIPT
+          } | ssh $SSH_OPTS "${AWS_USER}@${AWS_HOST}" 'bash -s'
 
       - name: Clean SSH key
         if: always()
