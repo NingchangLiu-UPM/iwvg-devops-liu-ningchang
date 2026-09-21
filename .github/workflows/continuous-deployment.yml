@@ -71,16 +71,21 @@ jobs:
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
           CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
           APP_PORT: ${{ env.APP_PORT }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_CONTAINER: postgres-server
+          DB_NETWORK: devopsNet
+          SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-server:5432/devopsDb
         run: |
           set -eu
           SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/id_ec2"
 
           ssh $SSH_OPTS "${AWS_USER}@${AWS_HOST}" "set -euo pipefail
-            echo '==[1/7] ECR login via EC2 IAM role=='
+            echo '==[1/9] ECR login via EC2 IAM role=='
             aws ecr get-login-password --region ${AWS_REGION} \
               | docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-            echo '==[2/7] Capture previous running image (if any)=='
+            echo '==[2/9] Capture previous running image (if any)=='
             PREV_IMAGE=\$(docker inspect -f '{{.Image}}' ${CONTAINER_NAME} 2>/dev/null || echo '')
             if [ -n \"\${PREV_IMAGE}\" ]; then
               echo \"Previous container image: \${PREV_IMAGE}\"
@@ -88,21 +93,36 @@ jobs:
               echo 'No previous container found'
             fi
 
-            echo '==[3/7] Pull new image=='
+            echo '==[3/9] Ensure Docker network exists=='
+            docker network inspect ${DB_NETWORK} >/dev/null 2>&1 || docker network create ${DB_NETWORK}
+
+            echo '==[4/9] Verify PostgreSQL container is running=='
+            if ! docker ps --filter name=^/\${DB_CONTAINER}\$ --filter status=running --format '{{.Names}}' | grep -q \"^\${DB_CONTAINER}\$\"; then
+              echo \"FATAL: PostgreSQL container '\${DB_CONTAINER}' is not running on \${DB_NETWORK}\" >&2
+              docker ps -a --filter name=^/\${DB_CONTAINER}\$ --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2 || true
+              exit 1
+            fi
+            echo \"PostgreSQL container '\${DB_CONTAINER}' is running\"
+
+            echo '==[5/9] Pull new image=='
             docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
 
-            echo '==[4/7] Stop and remove existing container (if any)=='
+            echo '==[6/9] Stop and remove existing container (if any)=='
             docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
 
-            echo '==[5/7] Start new container=='
+            echo '==[7/9] Start new container=='
             docker run -d \
               --name ${CONTAINER_NAME} \
+              --network ${DB_NETWORK} \
               -p ${APP_PORT}:${APP_PORT} \
               -e SPRING_PROFILES_ACTIVE=prod \
+              -e SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL} \
+              -e SPRING_DATASOURCE_USERNAME=${POSTGRES_USER} \
+              -e SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} \
               --restart unless-stopped \
               ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
 
-            echo '==[6/7] Health check=='
+            echo '==[8/9] Health check=='
             HEALTHY=0
             for i in \$(seq 1 20); do
               sleep 3
@@ -125,8 +145,12 @@ jobs:
                 docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
                 docker run -d \
                   --name ${CONTAINER_NAME} \
+                  --network ${DB_NETWORK} \
                   -p ${APP_PORT}:${APP_PORT} \
                   -e SPRING_PROFILES_ACTIVE=prod \
+                  -e SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL} \
+                  -e SPRING_DATASOURCE_USERNAME=${POSTGRES_USER} \
+                  -e SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} \
                   --restart unless-stopped \
                   \${PREV_IMAGE}
               else
