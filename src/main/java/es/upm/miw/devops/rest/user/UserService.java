@@ -1,7 +1,11 @@
 package es.upm.miw.devops.rest.user;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Service
@@ -36,5 +40,23 @@ public class UserService {
     private boolean matchBillable(UserFindCriteria criteria, User user) {
         return !criteria.hasBillable()
                 || user.isBillable() == criteria.getBillable();
+    }
+
+    @Transactional(readOnly = true)
+    public User read(UUID id) {
+        return this.userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found: " + id));
+    }
+
+    public void delete(UUID id) {
+        this.userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void updateActive(UUID id, Boolean active) {
+        User user = this.read(id);
+        user.setActive(active);
     }
 }

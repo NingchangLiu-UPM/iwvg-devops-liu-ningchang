@@ -1,10 +1,11 @@
 package es.upm.miw.devops.rest.user;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public class UserDto {
 
-    private String id;
+    private UUID id;
     private String mobile;
     private String firstName;
     private String familyName;
@@ -12,19 +13,19 @@ public class UserDto {
     private String identity;
     private String address;
     private String city;
-    private String province;
+    private Province province;
     private Integer postalCode;
-    private String role;
+    private Role role;
     private LocalDate registrationDate;
     private Boolean active;
 
     public UserDto() {
-        // for serialization
+        // empty
     }
 
     public static UserDto of(User user) {
         UserDto dto = new UserDto();
-        dto.id = user.getId() != null ? user.getId().toString() : null;
+        dto.id = user.getId();
         dto.mobile = user.getMobile();
         dto.firstName = user.getFirstName();
         dto.familyName = user.getFamilyName();
@@ -32,19 +33,19 @@ public class UserDto {
         dto.identity = user.getIdentity();
         dto.address = user.getAddress();
         dto.city = user.getCity();
-        dto.province = user.getProvince() != null ? user.getProvince().name() : null;
+        dto.province = user.getProvince();
         dto.postalCode = user.getPostalCode();
-        dto.role = user.getRole() != null ? user.getRole().name() : null;
+        dto.role = user.getRole();
         dto.registrationDate = user.getRegistrationDate();
         dto.active = user.getActive();
         return dto;
     }
 
-    public String getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -104,11 +105,11 @@ public class UserDto {
         this.city = city;
     }
 
-    public String getProvince() {
+    public Province getProvince() {
         return province;
     }
 
-    public void setProvince(String province) {
+    public void setProvince(Province province) {
         this.province = province;
     }
 
@@ -120,11 +121,11 @@ public class UserDto {
         this.postalCode = postalCode;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 
@@ -142,5 +143,17 @@ public class UserDto {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    @Override
+    public String toString() {
+        return "UserDto{" +
+                "id=" + id +
+                ", firstName='" + firstName + '\'' +
+                ", familyName='" + familyName + '\'' +
+                ", email='" + email + '\'' +
+                ", role=" + role +
+                ", active=" + active +
+                '}';
     }
 }

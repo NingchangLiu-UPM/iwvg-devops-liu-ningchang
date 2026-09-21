@@ -13,9 +13,10 @@ import java.util.UUID;
 @Profile({"dev", "test"})
 public class SeederForDev {
 
-    public static final UUID USER_ADMIN_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0101");
-    public static final UUID USER_MANAGER_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0102");
-    public static final UUID USER_OPERATOR_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0103");
+    public static final UUID USER_ADMIN_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0201");
+    public static final UUID USER_MANAGER_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0202");
+    public static final UUID USER_OPERATOR_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0203");
+    public static final UUID USER_CUSTOMER_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0204");
     public static final UUID USER_CUSTOMER_COMPLETE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0104");
     public static final UUID USER_CUSTOMER_INCOMPLETE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0105");
     public static final UUID USER_CUSTOMER_INACTIVE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff0106");
@@ -29,11 +30,11 @@ public class SeederForDev {
             userRepository.saveAll(List.of(
                     new User(
                             USER_ADMIN_ID,
-                            "+34611000101",
+                            "+34611000201",
                             "Admin",
                             "Root",
                             "admin@upm.es",
-                            "A11010101",
+                            "A21020101",
                             "Calle del Rectorado 1",
                             "Madrid",
                             Province.MADRID,
@@ -45,11 +46,11 @@ public class SeederForDev {
                     ),
                     new User(
                             USER_MANAGER_ID,
-                            "+34611000102",
+                            "+34611000202",
                             "Manager",
                             "Lead",
                             "manager@upm.es",
-                            "A11010102",
+                            "A21020102",
                             "Avenida del Manager 10",
                             "Madrid",
                             Province.MADRID,
@@ -61,11 +62,11 @@ public class SeederForDev {
                     ),
                     new User(
                             USER_OPERATOR_ID,
-                            "+34611000103",
+                            "+34611000203",
                             "Operator",
                             "Support",
                             "operator@upm.es",
-                            "A11010103",
+                            "A21020103",
                             "Plaza del Operador 5",
                             "Barcelona",
                             Province.BARCELONA,
@@ -76,12 +77,12 @@ public class SeederForDev {
                             Boolean.TRUE
                     ),
                     new User(
-                            USER_CUSTOMER_COMPLETE_ID,
-                            "+34611000104",
+                            USER_CUSTOMER_ID,
+                            "+34611000204",
                             "Customer",
-                            "Complete",
-                            "customer.complete@upm.es",
-                            "A11010104",
+                            "Standard",
+                            "customer@upm.es",
+                            "A21020104",
                             "Calle del Cliente 4",
                             "Valencia",
                             Province.VALENCIA,
@@ -89,6 +90,22 @@ public class SeederForDev {
                             "customer_pass",
                             Role.CUSTOMER,
                             LocalDate.of(2023, 3, 15),
+                            Boolean.TRUE
+                    ),
+                    new User(
+                            USER_CUSTOMER_COMPLETE_ID,
+                            "+34611000104",
+                            "Customer",
+                            "Complete",
+                            "customer.complete@upm.es",
+                            "A11010104",
+                            "Calle del Cliente Completo 4",
+                            "Valencia",
+                            Province.VALENCIA,
+                            46001,
+                            "customer_complete_pass",
+                            Role.CUSTOMER,
+                            LocalDate.of(2024, 1, 1),
                             Boolean.TRUE
                     ),
                     new User(
