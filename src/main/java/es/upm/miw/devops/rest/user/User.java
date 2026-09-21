@@ -72,6 +72,21 @@ public class User {
         this.active = active;
     }
 
+    public boolean isBillable() {
+        return hasContent(firstName)
+                && hasContent(familyName)
+                && hasContent(email)
+                && hasContent(identity)
+                && hasContent(address)
+                && hasContent(city)
+                && province != null
+                && postalCode != null;
+    }
+
+    private boolean hasContent(String value) {
+        return value != null && !value.isBlank();
+    }
+
     public UUID getId() {
         return id;
     }

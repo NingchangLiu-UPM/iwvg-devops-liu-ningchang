@@ -17,6 +17,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +60,7 @@ class UserResourceFT {
         assertThat(this.userRepository.existsById(id)).isTrue();
 
         this.webTestClient.delete()
-                .uri("/user/{id}", id)
+                .uri("/users/{id}", id)
                 .exchange()
                 .expectStatus().isOk();
 
@@ -69,7 +70,7 @@ class UserResourceFT {
     @Test
     void testRead() {
         this.webTestClient.get()
-                .uri("/user/{id}", SeederForDev.USER_MANAGER_ID)
+                .uri("/users/{id}", SeederForDev.USER_MANAGER_ID)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(UserDto.class)
@@ -87,7 +88,7 @@ class UserResourceFT {
     @Test
     void testReadNotFound() {
         this.webTestClient.get()
-                .uri("/user/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9999")
+                .uri("/users/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9999")
                 .exchange()
                 .expectStatus().isNotFound();
 
@@ -102,7 +103,7 @@ class UserResourceFT {
 
         try {
             this.webTestClient.put()
-                    .uri("/user/{id}/active", SeederForDev.USER_CUSTOMER_ID)
+                    .uri("/users/{id}/active", SeederForDev.USER_CUSTOMER_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(false)
                     .exchange()
@@ -115,7 +116,7 @@ class UserResourceFT {
             assertThat(updated.getMobile()).isEqualTo("+34611000204");
         } finally {
             this.webTestClient.put()
-                    .uri("/user/{id}/active", SeederForDev.USER_CUSTOMER_ID)
+                    .uri("/users/{id}/active", SeederForDev.USER_CUSTOMER_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(true)
                     .exchange()
@@ -129,7 +130,7 @@ class UserResourceFT {
     @Test
     void testUpdateActiveNotFound() {
         this.webTestClient.put()
-                .uri("/user/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9998/active")
+                .uri("/users/aaaaaaaa-bbbb-cccc-dddd-eeeeffff9998/active")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(false)
                 .exchange()
@@ -137,5 +138,57 @@ class UserResourceFT {
 
         assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
         assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+    }
+
+    @Test
+    void testFindBillableTrue() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?billable=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+    }
+
+    @Test
+    void testFindBillableFalse() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?billable=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID,
+                        SeederForDev.USER_CUSTOMER_ID);
+    }
+
+    @Test
+    void testFindActiveFalseAndBillableTrue() {
+        List<UserDto> users = this.webTestClient.get()
+                .uri("/users?active=false&billable=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(UserDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(users)
+                .extracting(UserDto::getId)
+                .contains(SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
     }
 }

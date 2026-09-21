@@ -8,7 +8,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -110,5 +112,42 @@ class UserServiceIT {
 
         assertThat(this.userRepository.existsById(SeederForDev.USER_OPERATOR_ID)).isTrue();
         assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+    }
+
+    @Test
+    void testFindBillableTrue() {
+        List<UUID> ids = this.userService.find(new UserFindCriteria(null, null, true))
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        assertThat(ids)
+                .contains(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+    }
+
+    @Test
+    void testFindBillableFalse() {
+        List<UUID> ids = this.userService.find(new UserFindCriteria(null, null, false))
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        assertThat(ids)
+                .contains(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INACTIVE_ID,
+                        SeederForDev.USER_CUSTOMER_ID);
+    }
+
+    @Test
+    void testFindActiveFalseAndBillableTrue() {
+        List<UUID> ids = this.userService.find(new UserFindCriteria(false, null, true))
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        assertThat(ids)
+                .contains(SeederForDev.USER_CUSTOMER_INACTIVE_ID)
+                .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
+                        SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
     }
 }
