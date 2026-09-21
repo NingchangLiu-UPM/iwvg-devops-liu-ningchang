@@ -97,12 +97,12 @@ jobs:
             docker network inspect ${DB_NETWORK} >/dev/null 2>&1 || docker network create ${DB_NETWORK}
 
             echo '==[4/9] Verify PostgreSQL container is running=='
-            if ! docker ps --filter name=^/\${DB_CONTAINER}\$ --filter status=running --format '{{.Names}}' | grep -q \"^\${DB_CONTAINER}\$\"; then
-              echo \"FATAL: PostgreSQL container '\${DB_CONTAINER}' is not running on \${DB_NETWORK}\" >&2
-              docker ps -a --filter name=^/\${DB_CONTAINER}\$ --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2 || true
+            if ! docker ps --filter name=^/${DB_CONTAINER}$ --filter status=running --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+              echo "FATAL: PostgreSQL container '${DB_CONTAINER}' is not running on ${DB_NETWORK}" >&2
+              docker ps -a --filter name=^/${DB_CONTAINER}$ --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2 || true
               exit 1
             fi
-            echo \"PostgreSQL container '\${DB_CONTAINER}' is running\"
+            echo "PostgreSQL container '${DB_CONTAINER}' is running"
 
             echo '==[5/9] Pull new image=='
             docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
