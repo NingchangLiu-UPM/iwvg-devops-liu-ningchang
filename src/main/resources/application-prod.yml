@@ -9,4 +9,4 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_DDL_AUTO:validate}
+      ddl-auto: update
