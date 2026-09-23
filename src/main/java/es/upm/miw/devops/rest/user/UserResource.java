@@ -2,6 +2,7 @@ package es.upm.miw.devops.rest.user;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping(UserResource.USERS)
@@ -54,6 +54,12 @@ public class UserResource {
             @PathVariable UUID id,
             @RequestBody UserDto userDto) {
         this.userService.update(id, userDto);
+    }
+
+    @PatchMapping
+    public void updateActiveBatch(
+            @RequestBody List<UserActivePatchDto> updates) {
+        this.userService.updateActiveBatch(updates);
     }
 
     @DeleteMapping(UserResource.USER_ID)
