@@ -150,4 +150,146 @@ class UserServiceIT {
                 .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
                         SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
     }
+
+    @Test
+    void testUpdate() {
+        User before = this.userService.read(SeederForDev.USER_MANAGER_ID);
+        UUID originalRegistrationDateAnchor = before.getId();
+        String originalPassword = before.getPassword();
+
+        UserDto updateDto = new UserDto();
+        updateDto.setId(SeederForDev.USER_MANAGER_ID);
+        updateDto.setMobile("+34611009901");
+        updateDto.setFirstName("ManagerUpdated");
+        updateDto.setFamilyName("LeadUpdated");
+        updateDto.setEmail("manager.updated@upm.es");
+        updateDto.setIdentity("A21990102");
+        updateDto.setAddress("Avenida del Manager Actualizado 10");
+        updateDto.setCity("Barcelona");
+        updateDto.setProvince(Province.BARCELONA);
+        updateDto.setPostalCode(8002);
+        updateDto.setRole(Role.MANAGER);
+        updateDto.setRegistrationDate(LocalDate.of(2099, 1, 1));
+        updateDto.setActive(Boolean.FALSE);
+
+        try {
+            this.userService.update(SeederForDev.USER_MANAGER_ID, updateDto);
+
+            User updated = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow();
+            assertThat(updated.getId()).isEqualTo(SeederForDev.USER_MANAGER_ID);
+            assertThat(updated.getId()).isEqualTo(originalRegistrationDateAnchor);
+            assertThat(updated.getMobile()).isEqualTo("+34611009901");
+            assertThat(updated.getFirstName()).isEqualTo("ManagerUpdated");
+            assertThat(updated.getFamilyName()).isEqualTo("LeadUpdated");
+            assertThat(updated.getEmail()).isEqualTo("manager.updated@upm.es");
+            assertThat(updated.getIdentity()).isEqualTo("A21990102");
+            assertThat(updated.getAddress()).isEqualTo("Avenida del Manager Actualizado 10");
+            assertThat(updated.getCity()).isEqualTo("Barcelona");
+            assertThat(updated.getProvince()).isEqualTo(Province.BARCELONA);
+            assertThat(updated.getPostalCode()).isEqualTo(8002);
+            assertThat(updated.getRole()).isEqualTo(Role.MANAGER);
+            assertThat(updated.getActive()).isFalse();
+            assertThat(updated.getPassword()).isEqualTo(originalPassword);
+            assertThat(updated.getRegistrationDate()).isEqualTo(before.getRegistrationDate());
+        } finally {
+            UserDto restoreDto = new UserDto();
+            restoreDto.setId(SeederForDev.USER_MANAGER_ID);
+            restoreDto.setMobile("+34611000202");
+            restoreDto.setFirstName("Manager");
+            restoreDto.setFamilyName("Lead");
+            restoreDto.setEmail("manager@upm.es");
+            restoreDto.setIdentity("A21020102");
+            restoreDto.setAddress("Avenida del Manager 10");
+            restoreDto.setCity("Madrid");
+            restoreDto.setProvince(Province.MADRID);
+            restoreDto.setPostalCode(28002);
+            restoreDto.setRole(Role.MANAGER);
+            restoreDto.setActive(Boolean.TRUE);
+
+            this.userService.update(SeederForDev.USER_MANAGER_ID, restoreDto);
+
+            User restored = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow();
+            assertThat(restored.getMobile()).isEqualTo("+34611000202");
+            assertThat(restored.getFirstName()).isEqualTo("Manager");
+            assertThat(restored.getActive()).isTrue();
+        }
+    }
+
+    @Test
+    void testUpdateNotFound() {
+        UUID nonExistentId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff9997");
+
+        UserDto dto = new UserDto();
+        dto.setMobile("+34611009999");
+        dto.setFirstName("Ghost");
+        dto.setFamilyName("User");
+        dto.setEmail("ghost@upm.es");
+        dto.setIdentity("G99999999");
+        dto.setAddress("Nowhere");
+        dto.setCity("Nowhere");
+        dto.setProvince(Province.MADRID);
+        dto.setPostalCode(28000);
+        dto.setRole(Role.CUSTOMER);
+        dto.setActive(Boolean.TRUE);
+
+        assertThatThrownBy(() -> this.userService.update(nonExistentId, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode")
+                .isEqualTo(HttpStatus.NOT_FOUND);
+
+        assertThat(this.userRepository.existsById(SeederForDev.USER_MANAGER_ID)).isTrue();
+        assertThat(this.userRepository.existsById(SeederForDev.USER_ADMIN_ID)).isTrue();
+    }
+
+    @Test
+    void testUpdatePathIdIsAuthoritative() {
+        User before = this.userService.read(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+        String originalFirstName = before.getFirstName();
+
+        UserDto dto = new UserDto();
+        dto.setId(SeederForDev.USER_CUSTOMER_ID);
+        dto.setMobile("+34611009902");
+        dto.setFirstName("PathWinsFirstName");
+        dto.setFamilyName("PathWinsFamily");
+        dto.setEmail("pathwins@upm.es");
+        dto.setIdentity("P99990102");
+        dto.setAddress("Calle del Path Wins 1");
+        dto.setCity("Sevilla");
+        dto.setProvince(Province.SEVILLA);
+        dto.setPostalCode(41001);
+        dto.setRole(Role.OPERATOR);
+        dto.setActive(Boolean.FALSE);
+
+        try {
+            this.userService.update(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID, dto);
+
+            User pathUpdated = this.userRepository.findById(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID).orElseThrow();
+            assertThat(pathUpdated.getFirstName()).isEqualTo("PathWinsFirstName");
+            assertThat(pathUpdated.getFamilyName()).isEqualTo("PathWinsFamily");
+            assertThat(pathUpdated.getEmail()).isEqualTo("pathwins@upm.es");
+            assertThat(pathUpdated.getRole()).isEqualTo(Role.OPERATOR);
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow().getFirstName())
+                    .isNotEqualTo("PathWinsFirstName");
+        } finally {
+            UserDto restoreDto = new UserDto();
+            restoreDto.setId(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+            restoreDto.setMobile(null);
+            restoreDto.setFirstName(originalFirstName);
+            restoreDto.setFamilyName("Incomplete");
+            restoreDto.setEmail(null);
+            restoreDto.setIdentity(null);
+            restoreDto.setAddress(null);
+            restoreDto.setCity(null);
+            restoreDto.setProvince(null);
+            restoreDto.setPostalCode(null);
+            restoreDto.setRole(Role.CUSTOMER);
+            restoreDto.setActive(Boolean.TRUE);
+
+            this.userService.update(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID, restoreDto);
+
+            User restored = this.userRepository.findById(SeederForDev.USER_CUSTOMER_INCOMPLETE_ID).orElseThrow();
+            assertThat(restored.getFirstName()).isEqualTo(originalFirstName);
+        }
+    }
 }
