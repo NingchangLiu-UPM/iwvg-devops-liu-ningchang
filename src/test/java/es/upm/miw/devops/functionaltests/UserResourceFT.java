@@ -4,6 +4,7 @@ import es.upm.miw.devops.rest.user.Province;
 import es.upm.miw.devops.rest.user.Role;
 import es.upm.miw.devops.rest.user.SeederForDev;
 import es.upm.miw.devops.rest.user.User;
+import es.upm.miw.devops.rest.user.UserActivePatchDto;
 import es.upm.miw.devops.rest.user.UserDto;
 import es.upm.miw.devops.rest.user.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -190,5 +191,167 @@ class UserResourceFT {
                 .contains(SeederForDev.USER_CUSTOMER_INACTIVE_ID)
                 .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
                         SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
+    }
+
+    @Test
+    void testUpdateActiveBatch() {
+        Boolean originalManagerActive = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+        Boolean originalCustomerActive = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow().getActive();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                            new UserActivePatchDto(SeederForDev.USER_CUSTOMER_ID, Boolean.FALSE)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody().isEmpty();
+
+            UserDto managerAfter = this.webTestClient.get()
+                    .uri("/users/{id}", SeederForDev.USER_MANAGER_ID)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(UserDto.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            UserDto customerAfter = this.webTestClient.get()
+                    .uri("/users/{id}", SeederForDev.USER_CUSTOMER_ID)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(UserDto.class)
+                    .returnResult()
+                    .getResponseBody();
+
+            assertThat(managerAfter).isNotNull();
+            assertThat(managerAfter.getActive()).isFalse();
+            assertThat(managerAfter.getFirstName()).isEqualTo("Manager");
+            assertThat(managerAfter.getEmail()).isEqualTo("manager@upm.es");
+            assertThat(managerAfter.getRole()).isEqualTo(Role.MANAGER);
+            assertThat(managerAfter.getRegistrationDate()).isEqualTo(LocalDate.of(2021, 5, 12));
+
+            assertThat(customerAfter).isNotNull();
+            assertThat(customerAfter.getActive()).isFalse();
+            assertThat(customerAfter.getFirstName()).isEqualTo("Customer");
+            assertThat(customerAfter.getEmail()).isEqualTo("customer@upm.es");
+            assertThat(customerAfter.getRole()).isEqualTo(Role.CUSTOMER);
+            assertThat(customerAfter.getRegistrationDate()).isEqualTo(LocalDate.of(2023, 3, 15));
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive),
+                            new UserActivePatchDto(SeederForDev.USER_CUSTOMER_ID, originalCustomerActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchRollbackOnMissingUser() {
+        Boolean originalManagerActive = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+        UUID nonExistentId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff9996");
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(Boolean.FALSE);
+
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.TRUE),
+                            new UserActivePatchDto(nonExistentId, Boolean.FALSE)
+                    ))
+                    .exchange()
+                    .expectStatus().isNotFound();
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(Boolean.FALSE);
+
+            assertThat(this.userRepository.existsById(SeederForDev.USER_CUSTOMER_ID)).isTrue();
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchEmptyArray() {
+        Boolean originalManagerActive = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+        Boolean originalCustomerActive = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow().getActive();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody().isEmpty();
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(originalManagerActive);
+            assertThat(this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow().getActive())
+                    .isEqualTo(originalCustomerActive);
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchDuplicateIdLastWriteWins() {
+        Boolean originalManagerActive = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.TRUE)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(Boolean.TRUE);
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+        }
     }
 }

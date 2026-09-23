@@ -150,4 +150,113 @@ class UserServiceIT {
                 .doesNotContain(SeederForDev.USER_CUSTOMER_COMPLETE_ID,
                         SeederForDev.USER_CUSTOMER_INCOMPLETE_ID);
     }
+
+    @Test
+    void testUpdateActiveBatch() {
+        Boolean originalManagerActive = this.userService.read(SeederForDev.USER_MANAGER_ID).getActive();
+        Boolean originalCustomerActive = this.userService.read(SeederForDev.USER_CUSTOMER_ID).getActive();
+
+        User managerBefore = this.userService.read(SeederForDev.USER_MANAGER_ID);
+        User customerBefore = this.userService.read(SeederForDev.USER_CUSTOMER_ID);
+
+        try {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                    new UserActivePatchDto(SeederForDev.USER_CUSTOMER_ID, Boolean.FALSE)
+            ));
+
+            User managerAfter = this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow();
+            User customerAfter = this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow();
+
+            assertThat(managerAfter.getActive()).isFalse();
+            assertThat(customerAfter.getActive()).isFalse();
+
+            assertThat(managerAfter.getId()).isEqualTo(managerBefore.getId());
+            assertThat(managerAfter.getFirstName()).isEqualTo(managerBefore.getFirstName());
+            assertThat(managerAfter.getEmail()).isEqualTo(managerBefore.getEmail());
+            assertThat(managerAfter.getRole()).isEqualTo(managerBefore.getRole());
+            assertThat(managerAfter.getRegistrationDate()).isEqualTo(managerBefore.getRegistrationDate());
+
+            assertThat(customerAfter.getId()).isEqualTo(customerBefore.getId());
+            assertThat(customerAfter.getFirstName()).isEqualTo(customerBefore.getFirstName());
+            assertThat(customerAfter.getEmail()).isEqualTo(customerBefore.getEmail());
+            assertThat(customerAfter.getRole()).isEqualTo(customerBefore.getRole());
+            assertThat(customerAfter.getRegistrationDate()).isEqualTo(customerBefore.getRegistrationDate());
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive),
+                    new UserActivePatchDto(SeederForDev.USER_CUSTOMER_ID, originalCustomerActive)
+            ));
+
+            assertThat(this.userService.read(SeederForDev.USER_MANAGER_ID).getActive()).isEqualTo(originalManagerActive);
+            assertThat(this.userService.read(SeederForDev.USER_CUSTOMER_ID).getActive()).isEqualTo(originalCustomerActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchRollbackOnMissingUser() {
+        Boolean originalManagerActive = this.userService.read(SeederForDev.USER_MANAGER_ID).getActive();
+        UUID nonExistentId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeffff9996");
+
+        this.userService.updateActiveBatch(List.of(
+                new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE)
+        ));
+        try {
+            assertThat(this.userService.read(SeederForDev.USER_MANAGER_ID).getActive()).isFalse();
+
+            assertThatThrownBy(() -> this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.TRUE),
+                    new UserActivePatchDto(nonExistentId, Boolean.FALSE)
+            )))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .extracting("statusCode")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+
+            Boolean managerActiveAfterFailure =
+                    this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+            assertThat(managerActiveAfterFailure).isEqualTo(Boolean.FALSE);
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+            ));
+            assertThat(this.userService.read(SeederForDev.USER_MANAGER_ID).getActive()).isEqualTo(originalManagerActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchEmptyList() {
+        Boolean originalManagerActive = this.userService.read(SeederForDev.USER_MANAGER_ID).getActive();
+
+        try {
+            this.userService.updateActiveBatch(List.of());
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(originalManagerActive);
+            assertThat(this.userRepository.findById(SeederForDev.USER_CUSTOMER_ID).orElseThrow().getActive())
+                    .isEqualTo(Boolean.TRUE);
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+            ));
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchDuplicateIdLastWriteWins() {
+        Boolean originalManagerActive = this.userService.read(SeederForDev.USER_MANAGER_ID).getActive();
+
+        try {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.TRUE)
+            ));
+
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(Boolean.TRUE);
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive)
+            ));
+        }
+    }
 }
