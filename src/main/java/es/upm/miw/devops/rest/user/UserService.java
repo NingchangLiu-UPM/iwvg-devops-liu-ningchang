@@ -59,4 +59,20 @@ public class UserService {
         User user = this.read(id);
         user.setActive(active);
     }
+
+    @Transactional
+    public void update(UUID id, UserDto userDto) {
+        User user = this.read(id);
+        user.setMobile(userDto.getMobile());
+        user.setFirstName(userDto.getFirstName());
+        user.setFamilyName(userDto.getFamilyName());
+        user.setEmail(userDto.getEmail());
+        user.setIdentity(userDto.getIdentity());
+        user.setAddress(userDto.getAddress());
+        user.setCity(userDto.getCity());
+        user.setProvince(userDto.getProvince());
+        user.setPostalCode(userDto.getPostalCode());
+        user.setRole(userDto.getRole());
+        user.setActive(userDto.getActive());
+    }
 }
