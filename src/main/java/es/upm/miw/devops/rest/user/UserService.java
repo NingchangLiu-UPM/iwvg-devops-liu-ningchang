@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -58,5 +59,13 @@ public class UserService {
     public void updateActive(UUID id, Boolean active) {
         User user = this.read(id);
         user.setActive(active);
+    }
+
+    @Transactional
+    public void updateActiveBatch(List<UserActivePatchDto> updates) {
+        for (UserActivePatchDto update : updates) {
+            User user = this.read(update.getId());
+            user.setActive(update.getActive());
+        }
     }
 }

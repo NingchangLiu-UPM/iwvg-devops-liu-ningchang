@@ -2,6 +2,7 @@ package es.upm.miw.devops.rest.user;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,6 +48,12 @@ public class UserResource {
             @PathVariable UUID id,
             @RequestBody Boolean active) {
         this.userService.updateActive(id, active);
+    }
+
+    @PatchMapping
+    public void updateActiveBatch(
+            @RequestBody List<UserActivePatchDto> updates) {
+        this.userService.updateActiveBatch(updates);
     }
 
     @DeleteMapping(UserResource.USER_ID)
