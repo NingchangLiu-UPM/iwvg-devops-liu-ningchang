@@ -11,6 +11,11 @@ jobs:
     name: Tests
     runs-on: ubuntu-22.04
 
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,8 +29,17 @@ jobs:
           java-version: 21
           cache: maven
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java
+          queries: security-extended
+
       - name: Run Unit, Integration and Functional Tests
         run: mvn -B verify
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
 
       - name: Run SonarCloud analysis
         if: github.ref == 'refs/heads/develop'
