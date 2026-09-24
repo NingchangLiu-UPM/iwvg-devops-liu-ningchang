@@ -401,4 +401,89 @@ class UserServiceIT {
             ));
         }
     }
+
+    // ================= Stage 7 Bug #12 — RED regression tests =================
+    // These tests document the intended correct behaviour:
+    // an ADMIN user must NOT be deactivated through PATCH /users.
+    // They are expected to FAIL until the production fix is applied.
+
+    @Test
+    void testUpdateActiveBatchAdminDeactivationForbidden() {
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            assertThatThrownBy(() -> this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.FALSE)
+            )))
+                    .isInstanceOf(RuntimeException.class);
+
+            Boolean adminActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+            assertThat(adminActiveAfter).isTrue();
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+            ));
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchAdminKeepActiveAllowed() {
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.TRUE)
+            ));
+
+            Boolean adminActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+            assertThat(adminActiveAfter).isTrue();
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+            ));
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchMixedNonAdminAndAdminForbiddenRollsBackNonAdmin() {
+        Boolean originalManagerActive =
+                this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            assertThatThrownBy(() -> this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.FALSE)
+            )))
+                    .isInstanceOf(RuntimeException.class);
+
+            Boolean managerActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+            Boolean adminActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+            assertThat(managerActiveAfter).isEqualTo(originalManagerActive);
+            assertThat(adminActiveAfter).isEqualTo(originalAdminActive);
+        } finally {
+            this.userService.updateActiveBatch(List.of(
+                    new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive),
+                    new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+            ));
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(originalManagerActive);
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
+        }
+    }
 }
