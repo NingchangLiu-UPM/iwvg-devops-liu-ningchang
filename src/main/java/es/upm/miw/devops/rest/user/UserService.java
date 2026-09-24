@@ -81,6 +81,11 @@ public class UserService {
     public void updateActiveBatch(List<UserActivePatchDto> updates) {
         for (UserActivePatchDto update : updates) {
             User user = this.read(update.getId());
+            if (user.getRole() == Role.ADMIN && Boolean.FALSE.equals(update.getActive())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "ADMIN user cannot be deactivated: " + user.getId());
+            }
             user.setActive(update.getActive());
         }
     }
