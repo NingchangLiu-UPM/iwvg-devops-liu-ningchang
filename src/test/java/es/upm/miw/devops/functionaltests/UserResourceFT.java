@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -525,6 +526,131 @@ class UserResourceFT {
                     ))
                     .exchange()
                     .expectStatus().isOk();
+        }
+    }
+
+    // ================= Stage 7 Bug #12 — RED regression tests =================
+    // These tests document the intended correct behaviour for the
+    // PATCH /users endpoint: an ADMIN user must NOT be deactivated.
+    // They are expected to FAIL until the production fix is applied.
+
+    @Test
+    void testUpdateActiveBatchAdminDeactivationForbiddenReturns409() {
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.FALSE)
+                    ))
+                    .exchange()
+                    .expectStatus().isEqualTo(HttpStatus.CONFLICT);
+
+            UserDto adminAfter = this.webTestClient.get()
+                    .uri("/users/{id}", SeederForDev.USER_ADMIN_ID)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(UserDto.class)
+                    .returnResult()
+                    .getResponseBody();
+            assertThat(adminAfter).isNotNull();
+            assertThat(adminAfter.getActive()).isTrue();
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchAdminKeepActiveReturnsSuccess() {
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.TRUE)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+
+            UserDto adminAfter = this.webTestClient.get()
+                    .uri("/users/{id}", SeederForDev.USER_ADMIN_ID)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(UserDto.class)
+                    .returnResult()
+                    .getResponseBody();
+            assertThat(adminAfter).isNotNull();
+            assertThat(adminAfter.getActive()).isTrue();
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
+        }
+    }
+
+    @Test
+    void testUpdateActiveBatchMixedNonAdminAndAdminForbiddenRollsBackNonAdmin() {
+        Boolean originalManagerActive =
+                this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+        Boolean originalAdminActive =
+                this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+        assertThat(originalAdminActive).isTrue();
+
+        try {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, Boolean.FALSE),
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, Boolean.FALSE)
+                    ))
+                    .exchange()
+                    .expectStatus().isEqualTo(HttpStatus.CONFLICT);
+
+            Boolean managerActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive();
+            Boolean adminActiveAfter =
+                    this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive();
+            assertThat(managerActiveAfter).isEqualTo(originalManagerActive);
+            assertThat(adminActiveAfter).isEqualTo(originalAdminActive);
+        } finally {
+            this.webTestClient.patch()
+                    .uri("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(List.of(
+                            new UserActivePatchDto(SeederForDev.USER_MANAGER_ID, originalManagerActive),
+                            new UserActivePatchDto(SeederForDev.USER_ADMIN_ID, originalAdminActive)
+                    ))
+                    .exchange()
+                    .expectStatus().isOk();
+            assertThat(this.userRepository.findById(SeederForDev.USER_MANAGER_ID).orElseThrow().getActive())
+                    .isEqualTo(originalManagerActive);
+            assertThat(this.userRepository.findById(SeederForDev.USER_ADMIN_ID).orElseThrow().getActive())
+                    .isEqualTo(originalAdminActive);
         }
     }
 }
