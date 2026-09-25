@@ -9,8 +9,11 @@ Official assignment: [miw-upm/iwvg-devops-template](https://github.com/miw-upm/i
 
 ## Project status
 
+[![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-
 [![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NingchangLiu-UPM_iwvg-devops-liu-ningchang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang)
+[![CD Staging](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-deployment.yml/badge.svg?branch=staging)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-deployment.yml)
+[![CD Main](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/cd-main.yml/badge.svg?branch=main)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/cd-main.yml)
 [![AWS EC2](https://img.shields.io/badge/AWS_EC2-staging_deployed-FF9900?logo=amazonaws&logoColor=white)](http://51.48.72.167:8080/swagger-ui.html)
 [![License](https://img.shields.io/github/license/NingchangLiu-UPM/iwvg-devops-liu-ningchang)](./LICENSE.md)
 
