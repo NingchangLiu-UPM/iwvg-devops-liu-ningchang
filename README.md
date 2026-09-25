@@ -9,7 +9,7 @@ Official assignment: [miw-upm/iwvg-devops-template](https://github.com/miw-upm/i
 
 ## Project status
 
-[![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-
+
 [![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NingchangLiu-UPM_iwvg-devops-liu-ningchang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang)
 [![CD Staging](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-deployment.yml/badge.svg?branch=staging)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-deployment.yml)
