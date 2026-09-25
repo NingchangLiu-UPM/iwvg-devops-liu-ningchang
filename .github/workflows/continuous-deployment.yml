@@ -55,11 +55,14 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          AWS_HOST: ${{ secrets.AWS_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ec2
+          printf '%s' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ec2
           chmod 600 ~/.ssh/id_ec2
-          ssh-keyscan -H "${{ secrets.AWS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "${AWS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
           echo "SSH key prepared"
 
       - name: Deploy to EC2 via SSH
