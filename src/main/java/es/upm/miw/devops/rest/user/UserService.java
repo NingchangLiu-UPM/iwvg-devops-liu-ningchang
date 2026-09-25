@@ -45,10 +45,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public User read(UUID id) {
-        return this.userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "User not found: " + id));
+        return this.findUserOrThrow(id);
     }
 
     public void delete(UUID id) {
@@ -57,13 +54,13 @@ public class UserService {
 
     @Transactional
     public void updateActive(UUID id, Boolean active) {
-        User user = this.read(id);
+        User user = this.findUserOrThrow(id);
         user.setActive(active);
     }
 
     @Transactional
     public void update(UUID id, UserDto userDto) {
-        User user = this.read(id);
+        User user = this.findUserOrThrow(id);
         user.setMobile(userDto.getMobile());
         user.setFirstName(userDto.getFirstName());
         user.setFamilyName(userDto.getFamilyName());
@@ -80,7 +77,7 @@ public class UserService {
     @Transactional
     public void updateActiveBatch(List<UserActivePatchDto> updates) {
         for (UserActivePatchDto update : updates) {
-            User user = this.read(update.getId());
+            User user = this.findUserOrThrow(update.getId());
             if (user.getRole() == Role.ADMIN && Boolean.FALSE.equals(update.getActive())) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
@@ -88,5 +85,12 @@ public class UserService {
             }
             user.setActive(update.getActive());
         }
+    }
+
+    private User findUserOrThrow(UUID id) {
+        return this.userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found: " + id));
     }
 }
