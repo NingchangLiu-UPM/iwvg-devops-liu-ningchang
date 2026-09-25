@@ -1,135 +1,322 @@
-## [Máster en Ingeniería Web por la Universidad Politécnica de Madrid (miw-upm)](http://miw.etsisi.upm.es)
-## Ingeniería Web: Visión General (IWVG) DevOps
-> Este proyecto es un apoyo docente de la asignatura. Cada release liberada corresponde al código utilizado en clase del curso indicado
+# IWVG DevOps — Liu Ningchang
 
-[![GitHub](https://img.shields.io/github/license/miw-upm/iwvg-devops?color=informational)](https://github.com/miw-upm/iwvg-devops/blob/develop/LICENSE.md)
-[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/miw-upm/iwvg-devops?color=informational)](https://github.com/miw-upm/iwvg-devops/releases)
-![GitHub Release Date](https://img.shields.io/github/release-date/miw-upm/iwvg-devops?color=informational)
-![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/miw-upm/iwvg-devops)
-![GitHub issues](https://img.shields.io/github/issues/miw-upm/iwvg-devops?color=important)
-![GitHub closed issues](https://img.shields.io/github/issues-closed/miw-upm/iwvg-devops?color=informational)
+Spring Boot REST API for the *Ingeniería Web: Visión General (IWVG)* DevOps
+course (UPM). This repository is the personal solution of **Liu Ningchang**
+based on the official assignment template published at
+[`miw-upm/iwvg-devops-template`](https://github.com/miw-upm/iwvg-devops-template).
 
-### Estado del código
-[![CI](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml/badge.svg?branch=develop)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
+The application exposes a small user management API, is built and verified
+through GitHub Actions + SonarCloud, and is deployed to **AWS EC2** for
+staging. The `main` branch workflow publishes Docker images to
+**GitHub Container Registry (GHCR)**; the actual AWS production deployment
+step on `main` is intentionally disabled.
+
+---
+
+## Build and quality badges
+
+[![CI](https://img.shields.io/github/actions/workflow/status/NingchangLiu-UPM/iwvg-devops-liu-ningchang/continuous-integration.yml?branch=develop&label=CI)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-integration.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=NingchangLiu-UPM_iwvg-devops-liu-ningchang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang)
-[![AWS EC2](https://img.shields.io/badge/AWS_EC2-deployed-FF9900?logo=amazonaws&logoColor=white)](http://51.48.72.167:8080/swagger-ui.html)
+[![CD Staging](https://img.shields.io/github/actions/workflow/status/NingchangLiu-UPM/iwvg-devops-liu-ningchang/continuous-deployment.yml?branch=staging&label=CD%20staging)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/continuous-deployment.yml)
+[![CD Main](https://img.shields.io/github/actions/workflow/status/NingchangLiu-UPM/iwvg-devops-liu-ningchang/cd-main.yml?branch=main&label=CD%20main)](https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/actions/workflows/cd-main.yml)
+[![License](https://img.shields.io/github/license/NingchangLiu-UPM/iwvg-devops-liu-ningchang?color=informational)](./LICENSE.md)
 
+> **Note on deployment status**: the existing staging CD workflow uses a
+> security-hardened configuration (see Issue #16). This updated workflow has
+> been merged into `develop` and validated by CI, but **it has not yet been
+> pushed to `staging` and has not been executed on staging** at the time of
+> this README. The existing staging application is still running an image
+> that was deployed **before** the Issue #16 workflow changes.
 
-### Tecnologías necesarias
-`Java` `Maven` `GitHub` `GitHub Actions` `Sonarcloud` `Slack` `Spring-Boot` `GitHub Packages` `Docker` `OpenAPI`
+---
 
-### :gear: Instalación del proyecto
-1. Clonar el repositorio en tu equipo, **mediante consola**:
-```sh
-cd <folder path>
-git clone https://github.com/miw-upm/iwvg-devops
+## Technology stack
+
+- **Language / build**: Java 21, Maven (Spring Boot 3.5.5 parent).
+- **Framework**: Spring Boot (Web, Security, Data JPA, Actuator).
+- **Persistence**: PostgreSQL (production, `dev`, `prod` profiles) and
+  H2 in-memory (test profile).
+- **API documentation**: springdoc OpenAPI (`/swagger-ui.html`,
+  `/v3/api-docs`).
+- **Container**: Docker, Docker Compose; multi-stage `Dockerfile`.
+- **Quality**: JUnit 5, AssertJ, Mockito (Surefire + Failsafe),
+  JaCoCo coverage report, SonarCloud analysis.
+- **CI/CD**: GitHub Actions (CI on `develop`/`staging`, staging CD on
+  `staging`, main CD on `main`).
+- **Cloud**: AWS EC2 + Amazon ECR (staging), GitHub Container Registry
+  (`ghcr.io`, main).
+
+---
+
+## Project architecture
+
+Layered Spring Boot application:
+
 ```
-2. Importar el proyecto mediante **IntelliJ IDEA**  
-   * **Open**, y seleccionar la carpeta del proyecto.
+es.upm.miw.devops
+├── Application                     # Spring Boot bootstrap
+├── SecurityConfiguration           # Stateless SecurityFilterChain
+└── rest
+    ├── SystemResource              # /, /version-badge
+    ├── exceptionshandler           # ApiExceptionHandler, ErrorMessage
+    └── user                        # User domain
+        ├── User                    # JPA entity
+        ├── UserDto / UserActivePatchDto / UserFindCriteria
+        ├── UserRepository          # Spring Data JPA
+        ├── UserService             # @Transactional business logic
+        ├── UserResource            # /users endpoints
+        ├── Role / Province         # enums
+        └── SeederForDev            # dev/test fixture data
+```
 
-### :gear: Ejecución en local con IntelliJ
-* Ejecutar la clase **Application** con IntelliJ
+Profiles:
 
-### :gear: Ejecución en local con Docker
-* Crear la red, solo una vez:
+- `application.yml` — defaults, defaults to `dev`.
+- `application-dev.yml` — local PostgreSQL on `localhost:5432`.
+- `application-prod.yml` — env-driven datasource (`SPRING_DATASOURCE_*`),
+  used by the staging CD workflow.
+- `application-test.yml` — H2 in-memory database.
+
+---
+
+## Implemented API
+
+All endpoints are mounted under `/users` (defined in `UserResource`).
+The system endpoints (`SystemResource`) live at the root.
+
+### `/users` — user management
+
+| Method | Path                  | Purpose                                           |
+|--------|-----------------------|---------------------------------------------------|
+| GET    | `/users`              | Search users (`?active=`, `?mobile=`, `?billable=`). |
+| GET    | `/users/{id}`         | Read a single user.                                |
+| PUT    | `/users/{id}`         | Replace user fields (path id is authoritative).    |
+| PUT    | `/users/{id}/active`  | Set the `active` flag of one user.                 |
+| PATCH  | `/users`              | Batch update of `active` (ADMIN deactivation rejected with `409 Conflict`). |
+| DELETE | `/users/{id}`         | Remove a user.                                     |
+
+### `/` and system endpoints
+
+| Method | Path              | Purpose                                   |
+|--------|-------------------|-------------------------------------------|
+| GET    | `/`               | Build info + endpoint catalog (HTML).     |
+| GET    | `/version-badge`  | SVG badge with current version (read by `SystemResource.VERSION_BADGE`). |
+| GET    | `/swagger-ui.html`| OpenAPI UI.                                |
+| GET    | `/v3/api-docs`    | OpenAPI JSON.                              |
+| GET    | `/actuator/health`| Application health endpoint (used by the staging CD health check). |
+| GET    | `/actuator/info`  | Build metadata.                            |
+
+---
+
+## Requirements and local setup
+
+- JDK 21.
+- Maven 3.9.x (or use the included wrapper if present).
+- Docker + Docker Compose (optional, for the containerised run).
+
+Clone:
+
+```sh
+git clone https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang.git
+cd iwvg-devops-liu-ningchang
+```
+
+Local PostgreSQL (matches `application-dev.yml`) or H2 (test profile).
+For the local Docker Compose run, create the external network once:
+
 ```sh
 docker network create devopsNet
 ```
-* Ver redes:
+
+---
+
+## Running with Maven
+
+Run unit + integration + functional tests and build the JAR:
+
 ```sh
-docker network ls
-```
-* Comando Docker para crear imagen y arrancar contenedor con la imagen ( :warning: **incluir el punto final** ):
-```sh
-docker build -t devops:latest .
-docker run -d --name devops1  -p 8080:8080 devops
+mvn -B verify
 ```
 
-* Comando para crear imagen y arrancarla en contenedor mediante docker compose (Se utiliza el fichero **docker-compose.yml**)
+Run the application locally against the `dev` profile
+(uses `application-dev.yml`, expects a local PostgreSQL with database
+`devopsDb`, user `postgres`, password `postgres`):
+
+```sh
+mvn spring-boot:run
+```
+
+Then browse to `http://localhost:8080/swagger-ui.html`.
+
+---
+
+## Running with IntelliJ
+
+1. **Open** the cloned folder in IntelliJ IDEA (the project will be
+   detected as a Maven project).
+2. Run the `Application` class (right-click → *Run*).
+3. The `dev` profile is active by default.
+
+---
+
+## Running with Docker / Docker Compose
+
+Build the image (multi-stage `Dockerfile`, final stage is
+`eclipse-temurin:21-jre-alpine`, JAR launched with `java -jar app.jar`):
+
+```sh
+docker build -t devops:latest .
+```
+
+Start the API container on the pre-existing `devopsNet` network (port
+`8080` published to the host):
+
+```sh
+docker run -d --name devops1 -p 8080:8080 --network devopsNet devops:latest
+```
+
+Or use the included `docker-compose.yml`:
+
 ```sh
 docker compose up --build -d
 ```
 
-* Cliente Web: `http://localhost:8080`
+For the local database stack, a separate `docker-compose-db.yml` is
+provided (PostgreSQL plus optional MySQL and MongoDB containers). It
+targets the same `devopsNet` network:
 
-### :book: Diapositivas
-* [Diapositivas de DevOps](docs/miw-iwvg-devops-slides.pdf)   
+```sh
+docker compose -f docker-compose-db.yml -p databases up -d
+```
 
-### :dvd: [Plantilla de la práctica en _docs/template-webflux.zip_](docs/template-webflux-3.4.zip)
+The `docker-compose.yml` image is named `devops:latest` (local name)
+and is independent from the `ECR_REGISTRY/ECR_REPOSITORY` naming used
+by the staging CD workflow.
 
-### :page_with_curl: IWVG. Devops. Enunciado de la práctica
-> Todo el software deberá estar en ingles.
+---
 
-#### 1. Crear un proyecto (**0.5 pto**)
-Crear un proyecto Maven llamado: **iwvg-devops-apellido-nombre**, versión **4.0.0**. Para ello se aporta **zip** de la
-plantilla.
-> Recordar editar el pom y cambiar el nombre del artefacto (artifactId).   
-> Recordar cambiar el nombre de la  carpeta.   
-> Importarlo desde IntelliJ.   
-> Crear un repositorio en GitHub con el mensaje del primer comit: "Initial. Nombre Apellido"   
- 
-#### 2. Preparar la gestión mediante Scrum (**0.5 pto**)
-> Crear un proyecto de gestión en GitHub y prepararlo para la metodología de Scrum (columnas, etiquetas, hitos...).   
+## Testing and quality analysis
 
-#### 3. Sprint 1. Preparación del ecosistema (**1.5 ptos**)
-Se crearán las siguientes 2 historias (**Issues**) pero se trabajarán en las ramas **develop** & **master**.
+- **Unit, integration and functional tests** are wired via
+  `maven-surefire-plugin` + `maven-failsafe-plugin` (`*IT.java`,
+  `*FT.java` conventions; functional tests use `WebTestClient`).
+- **Coverage** is collected with `jacoco-maven-plugin` during the
+  `verify` phase and reported via SonarCloud.
+- **SonarCloud** project: `NingchangLiu-UPM_iwvg-devops-liu-ningchang`
+  on organisation `ningchangliu-upm-1`. The Sonar Maven plugin is
+  declared in `pom.xml`; the analysis is invoked from
+  `continuous-integration.yml` only on pushes to `develop`.
 
-* :one: Integración continua con **GitHub Actions**. Incluir **Badge** en README con **link**.
-* :two: Análisis del código con **Sonarcloud**. Incluir **Badge** en README con **link** a la cuenta de Sonar.
-> :one:, :two:... representa el orden temporal de desarrollo de los issues.
+---
 
-#### 4. Release (**0.5 pto**)
-> Realizar la primera liberación del código (_**v.4.0.0-release**_)
+## CI/CD workflows
 
-#### 5. Sprint 2. Preparación del software a desarrollar (**2 ptos**)
-Se crearán las siguientes 4 historias (**Issues**).
-* Clases :one:**Fraction** & :five:**FractionTest**.
-* Clases :two:**User** & :three:**UserTest**.
-* Clases :four:**UsersDatabase**.
-* Ampliación :six:**Fraction** & :seven:**FractionTest** con las funcionalidades: **isProper, isImproper, isEquivalent, add, multiply & divide**.
+The workflows live under `.github/workflows/`.
 
-> :one:, :two:... representa el orden temporal de desarrollo de los issues. Cuando un issue se termine se debe incorporar a la rama **develop**. Las clases User, Fraction y UsersDatabase se podrán copiar de las dadas en clase.
+### `continuous-integration.yml` — CI
 
-> Realizar la segunda liberación del código (_**v.4.1.0-release**_)
+- Triggers: pushes to `develop` and `staging`.
+- Java 21 (Temurin), full `mvn -B verify`.
+- CodeQL analysis (`security-extended` queries).
+- SonarCloud analysis **only on `develop`** (gated by
+  `github.ref == 'refs/heads/develop'`).
+- GitHub Actions SHAs and CodeQL SHAs are pinned.
 
-#### 6. Sprint 3. Preparación de cuatro búsquedas a partir de las siguientes, según el valor de las primeros cuatro valores distintos del último commit realizado de la liberación anterior, se creará una historia (**
-Issues**) por cada búsqueda, con el test correspondiente (**3.5 ptos**).
+### `continuous-deployment.yml` — staging CD
 
-* `0` Stream&lt;String> findUserFamilyNameInitialBySomeProperFraction();
-* `1` Stream&lt;String> findUserIdBySomeProperFraction();
-* `2` Fraction findFractionMultiplicationByUserFamilyName(String familyName);
-* `3` Fraction findFractionDivisionByUserId(String id);
-* `4` Double findFirstDecimalFractionByUserName(String name);
-* `5` Stream&lt;String> findUserIdByAllProperFraction();
-* `6` Stream&lt;Double> findDecimalImproperFractionByUserName(String name);
-* `7` Fraction findFirstProperFractionByUserId(String id);
-* `8` Stream&lt;String> findUserFamilyNameBySomeImproperFraction();
-* `9` Fraction findHighestFraction();
-* `a` Stream&lt;String> findUserNameBySomeImproperFraction();
-* `b` Stream&lt;String> findUserFamilyNameByAllNegativeSignFractionDistinct();
-* `c` Stream&lt;Double> findDecimalFractionByUserName(String name);
-* `d` Stream&lt;Double> findDecimalFractionByNegativeSignFraction();
-* `e` Fraction findFractionAdditionByUserId(String id);
-* `f` Fraction findFractionSubtractionByUserName(String name);
+- Triggers: pushes to `staging`.
+- Builds and pushes the Docker image to **Amazon ECR**
+  (`ECR_REGISTRY=727660953632.dkr.ecr.eu-south-2.amazonaws.com`,
+  `ECR_REPOSITORY=iwvg-devops-liu-ningchang`, tags `latest` and
+  `${{ github.sha }}`).
+- Connects to the staging **EC2** host over SSH
+  (`AWS_HOST`, `AWS_USER`, `AWS_SSH_PRIVATE_KEY` as step-level env
+  variables — see Issue #16).
+- Deploys the API container `iwvg-devops` on network `devopsNet`
+  and depends on the existing `postgres-server` PostgreSQL container.
+- Runs `/actuator/health` (HTTP 200 + `"status":"UP"`) up to 20 times
+  with a 3-second sleep; on failure it prints logs and rolls back to
+  the previously captured image (`PREV_IMAGE`).
+- Cleans the temporary SSH key on every run (`if: always()`).
 
-> Realizar la tercera liberación del código (_**v.4.2.0-release**_)
+### `cd-main.yml` — main CD
 
-#### 7. Bug (**1.5 ptos**)
-> Suponer que la búsqueda 3 anterior no es buena y se debe proceder a modificarla. Realizar un cambio y proceder a la cuarta liberación del código (_**v.4.2.1-release**_).
+- Triggers: pushes to `main`.
+- Builds and pushes the Docker image to **GitHub Container Registry**
+  (`ghcr.io/<repo>:<version>` and `:latest`).
+- The actual AWS production deployment step is **commented out /
+  intentionally disabled** in this repository (cost-saving placeholder
+  kept for parity with the teacher's current `cd-main.yml`). The
+  workflow currently only publishes the GHCR image.
 
-### :white_check_mark: Criterios transversales **con pérdida de puntos por falta de calidad**
-* Uso correcto del flujo de trabajo ramificado. **Hasta -3 ptos**. 
-* Adecuación de la temporalidad de desarrollo según el enunciado. **Hasta -3 ptos**.
-* Mantenimiento de calidad del código según GitHub Actions, Sonar, Better Code Hub. Cobertura >= 80%. **Hasta -2 ptos**.
-* Gestión adecuada, completa y equlibrada (estimación, tiempo real...) durante el desarrollo. **Hasta -2 ptos**.
-* Commits correctos y completos. **Hasta -2 ptos**. 
-* Código limpio, bien formateado y ordenado. **Hasta -2 ptos**. 
-* Uso del ingles. **Hasta -1 pto**.
+---
 
+## Deployment architecture and status
 
-### :clap: Entraga de la práctica
-Indicar como texto en la subida la **URL de GitHub**
-> **NOTA. Acordarse de dar al botón de envío**
+### Staging environment (current, manually checked)
 
-Ejemplo resuelto:
-![](./docs/miw-iwvg-devops-demo.png)
+| Component | Value                                                    |
+|-----------|----------------------------------------------------------|
+| Cloud     | AWS EC2 (region `eu-south-2`).                            |
+| Registry  | Amazon ECR (`iwvg-devops-liu-ningchang`).                 |
+| Container | `iwvg-devops` (image `ECR_REGISTRY/.../iwvg-devops-liu-ningchang:latest`). |
+| Network   | Docker `devopsNet` (external).                            |
+| Database  | PostgreSQL container `postgres-server` on the same network. |
+| Health    | `GET /actuator/health` → `HTTP 200 {"status":"UP"}`.      |
+
+The existing staging instance is still running an image that was
+deployed before the Issue #16 workflow changes. The Issue #16-hardened
+CD workflow has not been executed on the `staging` branch, so this
+README does not claim that the updated workflow has been validated
+end-to-end against AWS.
+
+### Infrastructure difference vs the assignment template
+
+The official assignment describes an ecosystem based on **AWS Lightsail,
+Ubuntu 22.04 LTS and GitHub Packages**. This student solution is
+implemented on **AWS EC2 / Amazon ECR** for staging and on
+**GitHub Container Registry (`ghcr.io`)** for the `main` branch.
+The deployment has not been migrated to Lightsail in this repository.
+
+---
+
+## Releases
+
+Formal release tags currently published in this repository:
+
+| Tag         | Type    | Branch   |
+|-------------|---------|----------|
+| `6.3.0`     | Release | `main`   |
+| `6.3.0-RC1` | RC      | `staging`|
+| `6.2.0`     | Release | `main`   |
+| `6.2.0-RC1` | RC      | `staging`|
+| `6.1.0` … `6.1.0-RC5` | RC / release history | `backup/*` branches |
+| `6.0.0`, `6.0.0-RC1`  | Initial release | `master` |
+
+The version declared in `pom.xml` is currently `6.0.0`; it has **not**
+been bumped in lock-step with the latest tag (`6.3.0`). This known gap
+is documented here explicitly to avoid confusion.
+
+---
+
+## GitHub project and assignment references
+
+- Repository: <https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang>
+- GitHub Issues: <https://github.com/NingchangLiu-UPM/iwvg-devops-liu-ningchang/issues>
+- Official assignment template:
+  <https://github.com/miw-upm/iwvg-devops-template>
+- SonarCloud project:
+  <https://sonarcloud.io/summary/new_code?id=NingchangLiu-UPM_iwvg-devops-liu-ningchang>
+- Course (UPM): <https://miw.etsisi.upm.es>
+
+The official assignment itself remains in the teacher's template
+repository; this README only describes the student implementation and
+must not be confused with the official 4.x Fraction/UsersDatabase
+exercises that appear in the legacy README template.
+
+---
+
+## License
+
+Released under the [MIT License](./LICENSE.md), copyright Universidad
+Politécnica de Madrid.
